@@ -61,84 +61,49 @@ onMounted(async () => {
 
 <template>
   <main class="container">
-    <h1>命令执行工具</h1>
-    
-    <!-- 工具状态和安装按钮 -->
-    <div class="tools-section">
-      <h2>工具管理</h2>
-      <div class="tools-grid">
-        <div class="tool-card">
-          <h3>UV</h3>
-          <p>状态: {{ toolsStatus.uv }}</p>
-          <button 
-            @click="installTool('uv')"
-            :disabled="isLoading || toolsStatus.uv === '已安装'"
-          >
-            {{ isLoading ? '安装中...' : '安装 UV' }}
-          </button>
-        </div>
-        <div class="tool-card">
-          <h3>Bun</h3>
-          <p>状态: {{ toolsStatus.bun }}</p>
-          <button 
-            @click="installTool('bun')"
-            :disabled="isLoading || toolsStatus.bun === '已安装'"
-          >
-            {{ isLoading ? '安装中...' : '安装 Bun' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 命令执行部分 -->
-    <div class="command-section">
-      <h2>命令执行</h2>
-      <form class="row" @submit.prevent="executeCommand">
-        <input 
-          id="cmd-input" 
-          v-model="cmdInput" 
-          placeholder="输入命令..." 
-          required
-        />
-        <input 
-          id="args-input" 
-          v-model="cmdArgs" 
-          placeholder="参数（可选）" 
-        />
-        <button type="submit" :disabled="isLoading">
-          {{ isLoading ? '执行中...' : '执行' }}
-        </button>
-      </form>
-      
-      <div v-if="commandHistory.length > 0" class="history-container">
-        <h3>命令历史</h3>
-        <ul>
-          <li v-for="(cmd, index) in commandHistory" :key="index" @click="cmdInput = cmd">
-            {{ cmd }}
-          </li>
-        </ul>
-      </div>
-      
-      <!-- 修改输出容器的显示条件 -->
-      <div class="output-container">
-        <h3>执行结果</h3>
-        <div v-if="isLoading" class="loading">命令执行中...</div>
-        <pre v-if="cmdOutput" class="cmd-output">{{ cmdOutput }}</pre>
-        <pre v-if="cmdError" class="cmd-error">{{ cmdError }}</pre>
-      </div>
-    </div>
-    
-    <!-- 原有的问候部分 -->
-    <div class="greeting-section">
-      <h2>问候功能</h2>
-      <form class="row" @submit.prevent="greet">
-        <input id="greet-input" v-model="name" placeholder="输入名字..." />
-        <button type="submit">问候</button>
-      </form>
-      <p>{{ greetMsg }}</p>
-    </div>
+    <nav class="nav-menu">
+      <router-link to="/">命令执行</router-link> |
+      <router-link to="/greeter">问候</router-link> |
+      <router-link to="/tools">工具管理</router-link>
+    </nav>
+    <router-view></router-view>
   </main>
 </template>
+
+<style>
+.container {
+  margin: 0;
+  padding-top: 10vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+.nav-menu {
+  margin-bottom: 2rem;
+}
+
+.nav-menu a {
+  color: #2c3e50;
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+}
+
+.nav-menu a.router-link-active {
+  color: #42b983;
+}
+
+@media (prefers-color-scheme: dark) {
+  .nav-menu a {
+    color: #ffffff;
+  }
+  
+  .nav-menu a.router-link-active {
+    color: #42b983;
+  }
+}
+</style>
 
 <style scoped>
 .tools-section {
@@ -228,6 +193,7 @@ onMounted(async () => {
   background-color: #f1f1f1;
 }
 
+/* 删除重复的 cmd-output 和 cmd-error 样式定义 */
 .cmd-output {
   white-space: pre-wrap;
   word-break: break-all;
@@ -276,80 +242,6 @@ onMounted(async () => {
   -webkit-text-size-adjust: 100%;
 }
 
-.container {
-  margin: 0;
-  padding-top: 10vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
-}
-
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
-}
-
 @media (prefers-color-scheme: dark) {
   :root {
     color: #f6f6f6;
@@ -369,5 +261,28 @@ button {
     background-color: #0f0f0f69;
   }
 }
+</style>
 
+<style scoped>
+.container {
+  margin: 0;
+  padding-top: 10vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+.features-toggle {
+  margin: 2rem auto;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.features-toggle button {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
 </style>
