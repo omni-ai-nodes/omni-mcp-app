@@ -3,6 +3,9 @@ use std::process::Command;
 use std::io::{self, Write};
 use log::{info, error};
 
+// 导入工具模块
+mod tools;
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     info!("Greeting user: {}", name);
@@ -100,6 +103,12 @@ fn execute_command(cmd: &str, args: Vec<String>) -> Result<String, String> {
 pub fn run() {
     env_logger::init();
     info!("应用启动");
+    
+    // 检查并安装工具
+    match tools::check_and_install_tools() {
+        Ok(_) => info!("工具检查完成"),
+        Err(e) => error!("工具检查失败: {}", e),
+    }
     
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())

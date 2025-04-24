@@ -18,6 +18,9 @@ const cmdError = ref("");
 const isLoading = ref(false);
 const commandHistory = ref<string[]>([]); // 添加命令历史记录数组
 
+// 添加工具状态
+const toolsStatus = ref("正在检查工具...");
+
 async function executeCommand() {
   if (!cmdInput.value) return;
   
@@ -56,12 +59,22 @@ async function executeCommand() {
 
 onMounted(() => {
   console.log("应用已加载");
+  
+  // 检查工具状态
+  setTimeout(() => {
+    toolsStatus.value = "工具检查完成";
+  }, 3000);
 });
 </script>
 
 <template>
   <main class="container">
     <h1>命令执行工具</h1>
+    
+    <!-- 工具状态显示 -->
+    <div class="tools-status">
+      <p>工具状态: {{ toolsStatus }}</p>
+    </div>
 
     <!-- 命令执行部分 -->
     <div class="command-section">
@@ -113,6 +126,20 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.tools-status {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  text-align: center;
+}
+
+@media (prefers-color-scheme: dark) {
+  .tools-status {
+    background-color: #333;
+  }
+}
+
 .command-section {
   margin-top: 2rem;
   width: 100%;

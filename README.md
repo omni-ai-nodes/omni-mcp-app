@@ -18,3 +18,8 @@ pnpm create omni-mcp-app
 
 ### For iOS development, run:
   pnpm tauri ios dev
+
+### Force fix with uncommitted changes :
+```bash
+cargo fix --lib -p omni-mcp-app --allow-dirty
+ ```
