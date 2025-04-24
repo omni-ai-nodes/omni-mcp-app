@@ -192,22 +192,58 @@ pub fn install_tool(tool: &Tool) -> Result<(), String> {
 }
 
 // 检查并安装所有工具
+#[tauri::command] // <-- Add this attribute
 pub fn check_and_install_tools() -> Result<(), String> {
     info!("开始安装工具");
-    
+
     // 安装 uv
     println!("准备安装 uv...");
     match install_tool(&Tool::Uv) {
         Ok(_) => info!("uv 安装成功"),
         Err(e) => warn!("uv 安装失败: {}", e),
     }
-    
+
     // 安装 bun
     println!("准备安装 bun...");
     match install_tool(&Tool::Bun) {
         Ok(_) => info!("bun 安装成功"),
         Err(e) => warn!("bun 安装失败: {}", e),
     }
-    
+
     Ok(())
+}
+
+// 检查工具状态
+#[tauri::command]
+pub fn check_tools_status() -> Result<serde_json::Value, String> {
+    let uv_status = if Tool::Uv.check_installed() {
+        "已安装"
+    } else {
+        "未安装"
+    };
+    
+    let bun_status = if Tool::Bun.check_installed() {
+        "已安装"
+    } else {
+        "未安装"
+    };
+    
+    let status = serde_json::json!({
+        "uv": uv_status,
+        "bun": bun_status
+    });
+    
+    Ok(status)
+}
+
+// 安装单个工具的命令
+#[tauri::command]
+pub fn install_single_tool(tool: &str) -> Result<(), String> {
+    let tool = match tool {
+        "uv" => Tool::Uv,
+        "bun" => Tool::Bun,
+        _ => return Err("不支持的工具类型".to_string()),
+    };
+    
+    install_tool(&tool)
 }

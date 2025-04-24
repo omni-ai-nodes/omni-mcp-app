@@ -19,51 +19,43 @@ const isLoading = ref(false);
 const commandHistory = ref<string[]>([]); // 添加命令历史记录数组
 
 // 添加工具状态
-const toolsStatus = ref("正在检查工具...");
+const toolsStatus = ref({
+  uv: "未安装",
+  bun: "未安装"
+});
 
-async function executeCommand() {
-  if (!cmdInput.value) return;
-  
-  isLoading.value = true;
-  cmdOutput.value = "";
-  cmdError.value = "";
-  
+// 添加安装工具的方法
+async function installTool(tool: string) {
   try {
-    // 将参数字符串拆分为数组
-    const args = cmdArgs.value ? cmdArgs.value.split(" ") : [];
+    isLoading.value = true;
+    cmdError.value = ""; // 清除之前的错误信息
+    cmdOutput.value = `正在安装 ${tool}...`; // 显示安装进度
+    console.log(`开始安装 ${tool}...`); // 添加日志
     
-    console.log(`执行命令: ${cmdInput.value} ${args.join(' ')}`);
+    const result = await invoke("install_single_tool", { tool });
+    console.log(`安装结果:`, result); // 添加日志
     
-    // 添加到历史记录
-    const fullCommand = cmdInput.value + (cmdArgs.value ? ' ' + cmdArgs.value : '');
-    commandHistory.value.unshift(fullCommand);
-    if (commandHistory.value.length > 10) {
-      commandHistory.value.pop();
-    }
-    
-    const result = await invoke("execute_command", { 
-      cmd: cmdInput.value,
-      args: args
-    });
-    
-    // 确保结果显示在界面上
-    cmdOutput.value = result as string;
-    console.log(`命令执行结果: ${cmdOutput.value}`);
+    toolsStatus.value[tool as keyof typeof toolsStatus.value] = "已安装";
+    cmdOutput.value = `${tool} 安装成功！`;
   } catch (error) {
-    cmdError.value = error as string;
-    console.error(`命令执行失败: ${error}`);
+    console.error(`安装失败:`, error); // 添加错误日志
+    cmdError.value = `安装失败: ${error}`;
+    toolsStatus.value[tool as keyof typeof toolsStatus.value] = "安装失败";
   } finally {
     isLoading.value = false;
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   console.log("应用已加载");
   
   // 检查工具状态
-  setTimeout(() => {
-    toolsStatus.value = "工具检查完成";
-  }, 3000);
+  try {
+    const status = await invoke("check_tools_status");
+    toolsStatus.value = status as typeof toolsStatus.value;
+  } catch (error) {
+    console.error("检查工具状态失败:", error);
+  }
 });
 </script>
 
@@ -71,9 +63,31 @@ onMounted(() => {
   <main class="container">
     <h1>命令执行工具</h1>
     
-    <!-- 工具状态显示 -->
-    <div class="tools-status">
-      <p>工具状态: {{ toolsStatus }}</p>
+    <!-- 工具状态和安装按钮 -->
+    <div class="tools-section">
+      <h2>工具管理</h2>
+      <div class="tools-grid">
+        <div class="tool-card">
+          <h3>UV</h3>
+          <p>状态: {{ toolsStatus.uv }}</p>
+          <button 
+            @click="installTool('uv')"
+            :disabled="isLoading || toolsStatus.uv === '已安装'"
+          >
+            {{ isLoading ? '安装中...' : '安装 UV' }}
+          </button>
+        </div>
+        <div class="tool-card">
+          <h3>Bun</h3>
+          <p>状态: {{ toolsStatus.bun }}</p>
+          <button 
+            @click="installTool('bun')"
+            :disabled="isLoading || toolsStatus.bun === '已安装'"
+          >
+            {{ isLoading ? '安装中...' : '安装 Bun' }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- 命令执行部分 -->
@@ -105,7 +119,8 @@ onMounted(() => {
         </ul>
       </div>
       
-      <div class="output-container" v-if="isLoading || cmdOutput || cmdError">
+      <!-- 修改输出容器的显示条件 -->
+      <div class="output-container">
         <h3>执行结果</h3>
         <div v-if="isLoading" class="loading">命令执行中...</div>
         <pre v-if="cmdOutput" class="cmd-output">{{ cmdOutput }}</pre>
@@ -126,17 +141,29 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.tools-status {
-  margin-bottom: 1rem;
-  padding: 0.5rem;
-  background-color: #f0f0f0;
-  border-radius: 4px;
+.tools-section {
+  margin: 2rem auto;
+  width: 100%;
+  max-width: 800px;
+}
+
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.tool-card {
+  padding: 1rem;
+  border-radius: 8px;
+  background-color: #f1f1f1;
   text-align: center;
 }
 
 @media (prefers-color-scheme: dark) {
-  .tools-status {
-    background-color: #333;
+  .tool-card {
+    background-color: #1a1a1a;
   }
 }
 
