@@ -1,6 +1,4 @@
-use std::path::Path;
 use std::process::Command;
-use std::fs;
 use log::{info, error, warn};
 
 // 定义支持的工具
@@ -17,139 +15,175 @@ impl Tool {
             Tool::Bun => "bun",
         }
     }
+
+    // 检查工具是否已安装
+    fn check_installed(&self) -> bool {
+        let output = if cfg!(target_os = "windows") {
+            Command::new("where")
+                .arg(self.name())
+                .output()
+        } else {
+            Command::new("which")
+                .arg(self.name())
+                .output()
+        };
+
+        match output {
+            Ok(output) => output.status.success(),
+            Err(_) => false,
+        }
+    }
+
+    // 获取 UV 最新版本号
+    fn get_uv_latest_version() -> Result<String, String> {
+        println!("正在获取 UV 最新版本号...");
+        let output = Command::new("curl")
+            .args([
+                "-s",
+                "https://api.github.com/repos/astral-sh/uv/releases/latest"
+            ])
+            .output()
+            .map_err(|e| format!("获取UV版本失败: {}", e))?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        // println!("GitHub API 响应:\n{}", stdout);
+        
+        // 直接查找 "tag_name": "x.x.x" 格式
+        if let Some(tag_pos) = stdout.find("\"tag_name\": \"") {
+            let start = tag_pos + "\"tag_name\": \"".len();
+            if let Some(end) = stdout[start..].find('"') {
+                let version = &stdout[start..start + end];
+                println!("解析到的版本号: {}", version);
+                return Ok(version.to_string());
+            }
+        }
+        
+        let err_msg = "无法解析UV版本信息".to_string();
+        println!("错误: {}", err_msg);
+        Err(err_msg)
+    }
     
-    // 获取工具的下载URL
-    fn download_url(&self) -> Result<String, String> {
-        let os = if cfg!(target_os = "windows") {
-            "windows"
-        } else if cfg!(target_os = "macos") {
-            "darwin"  // macOS 在发布版本中通常使用 "darwin" 而不是 "macos"
-        } else if cfg!(target_os = "linux") {
-            "linux"
+    // 获取安装命令
+    fn install_command(&self) -> Result<(String, Vec<String>), String> {
+        if self.check_installed() {
+            return Err(format!("{} 已经安装", self.name()));
+        }
+
+        if cfg!(target_os = "windows") {
+            match self {
+                Tool::Uv => {
+                    // 先获取版本号
+                    match Self::get_uv_latest_version() {
+                        Ok(version) => {
+                            println!("成功获取 UV 最新版本: {}", version);
+                            Ok((
+                                "powershell".to_string(),
+                                vec![
+                                    "-ExecutionPolicy".to_string(),
+                                    "Bypass".to_string(),
+                                    "-c".to_string(),
+                                    format!("irm https://github.com/astral-sh/uv/releases/download/{}/uv-installer.ps1 | iex",
+                                        version),
+                                ]
+                            ))
+                        },
+                        Err(e) => Err(format!("获取 UV 版本失败: {}", e))
+                    }
+                },
+                Tool::Bun => Ok((
+                    "powershell".to_string(),
+                    vec![
+                        "-c".to_string(),
+                        "irm bun.sh/install.ps1 | iex".to_string()
+                    ]
+                )),
+            }
         } else {
-            return Err(format!("不支持的操作系统"));
-        };
-        
-        let arch = if cfg!(target_arch = "x86_64") {
-            "x64"  // 很多项目使用 x64 而不是 x86_64
-        } else if cfg!(target_arch = "aarch64") {
-            "arm64"  // 通常使用 arm64 而不是 aarch64
-        } else {
-            return Err(format!("不支持的架构"));
-        };
-        
-        match self {
-            Tool::Uv => {
-                // uv 的下载 URL 格式
-                if cfg!(target_os = "windows") {
-                    Ok(format!("https://github.com/astral-sh/uv/releases/latest/download/uv-{}-{}.exe", os, arch))
-                } else {
-                    Ok(format!("https://github.com/astral-sh/uv/releases/latest/download/uv-{}-{}", os, arch))
-                }
-            },
-            Tool::Bun => {
-                // bun 的下载 URL 格式
-                if cfg!(target_os = "windows") {
-                    Ok(format!("https://bun.sh/download/latest/bun-{}-{}.exe", os, arch))
-                } else if cfg!(target_os = "macos") {
-                    Ok(format!("https://bun.sh/download/latest/bun-{}-{}.zip", os, arch))
-                } else {
-                    Ok(format!("https://bun.sh/download/latest/bun-{}-{}.zip", os, arch))
-                }
-            },
+            // Unix-like systems (macOS, Linux)
+            match self {
+                Tool::Uv => {
+                    // 先获取版本号
+                    match Self::get_uv_latest_version() {
+                        Ok(version) => {
+                            println!("成功获取 UV 最新版本: {}", version);
+                            Ok((
+                                "curl".to_string(),
+                                vec![
+                                    "--proto".to_string(),
+                                    "=https".to_string(),
+                                    "--tlsv1.2".to_string(),
+                                    "-LsSf".to_string(),
+                                    format!("https://github.com/astral-sh/uv/releases/download/{}/uv-installer.sh",
+                                        version),
+                                    "|".to_string(),
+                                    "bash".to_string()
+                                ]
+                            ))
+                        },
+                        Err(e) => Err(format!("获取 UV 版本失败: {}", e))
+                    }
+                },
+                Tool::Bun => Ok((
+                    "curl".to_string(),
+                    vec![
+                        "-fsSL".to_string(),
+                        "https://bun.sh/install".to_string(),
+                        "|".to_string(),
+                        "bash".to_string()
+                    ]
+                )),
+            }
         }
     }
 }
 
-// 检查工具是否已安装
-pub fn is_tool_installed(tool: &Tool, bin_dir: &Path) -> bool {
-    let tool_path = bin_dir.join(tool.name());
+// 安装工具
+pub fn install_tool(tool: &Tool) -> Result<(), String> {
+    println!("开始安装 {}", tool.name());
+    info!("开始安装 {}", tool.name());
     
-    if cfg!(target_os = "windows") {
-        tool_path.with_extension("exe").exists()
-    } else {
-        tool_path.exists()
-    }
-}
-
-// 下载工具
-pub fn download_tool(tool: &Tool, bin_dir: &Path) -> Result<(), String> {
-    println!("开始下载工具: {}", tool.name());
-    info!("开始下载工具: {}", tool.name());
+    let (cmd, args) = tool.install_command()?;
+    println!("执行命令: {} {}", cmd, args.join(" "));
     
-    // 确保bin目录存在
-    if !bin_dir.exists() {
-        fs::create_dir_all(bin_dir).map_err(|e| {
-            let err_msg = format!("无法创建bin目录: {}", e);
-            error!("{}", err_msg);
-            err_msg
-        })?;
-    }
-    
-    let download_url = tool.download_url()?;
-    let tool_path = bin_dir.join(tool.name());
-    
-    println!("下载地址: {}", download_url);
-    println!("保存路径: {:?}", tool_path);
-    info!("从 {} 下载 {} 到 {:?}", download_url, tool.name(), tool_path);
-    
-    // 使用curl下载工具，添加进度显示
     let output = if cfg!(target_os = "windows") {
-        println!("使用 PowerShell 下载...");
-        Command::new("powershell")
-            .args([
-                "-Command",
-                &format!(
-                    "$ProgressPreference = 'Continue'; Invoke-WebRequest -Uri '{}' -OutFile '{}' -UseBasicParsing",
-                    download_url,
-                    tool_path.to_string_lossy()
-                )
-            ])
+        Command::new(&cmd)
+            .args(&args)
             .output()
     } else {
-        println!("使用 curl 下载...");
-        Command::new("curl")
-            .args([
-                "-L",
-                "-#", // 添加进度条
-                &download_url,
-                "-o",
-                &tool_path.to_string_lossy()
-            ])
+        // 对于 Unix 系统，使用 sh -c 来执行完整命令
+        let full_command = format!("{} {}", cmd, args.join(" "));
+        Command::new("sh")
+            .arg("-c")
+            .arg(&full_command)
             .output()
     };
     
     match output {
         Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            
+            // 打印安装过程输出
+            if !stdout.is_empty() {
+                println!("安装输出:\n{}", stdout);
+            }
+            
+            if !stderr.is_empty() {
+                println!("安装错误输出:\n{}", stderr);
+            }
+            
             if !output.status.success() {
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                let err_msg = format!("下载 {} 失败: {}", tool.name(), stderr);
-                println!("错误: {}", err_msg);
+                let err_msg = format!("安装 {} 失败", tool.name());
                 error!("{}", err_msg);
                 return Err(err_msg);
             }
             
-            // 在Unix系统上设置可执行权限
-            if !cfg!(target_os = "windows") {
-                println!("设置可执行权限...");
-                let chmod_output = Command::new("chmod")
-                    .args(["+x", &tool_path.to_string_lossy()])
-                    .output();
-                
-                if let Err(e) = chmod_output {
-                    let err_msg = format!("无法设置 {} 的可执行权限: {}", tool.name(), e);
-                    println!("错误: {}", err_msg);
-                    error!("{}", err_msg);
-                    return Err(err_msg);
-                }
-            }
-            
-            println!("{} 下载完成！", tool.name());
-            info!("{} 下载完成", tool.name());
+            println!("{} 安装完成！", tool.name());
+            info!("{} 安装完成", tool.name());
             Ok(())
         },
         Err(e) => {
-            let err_msg = format!("下载 {} 时出错: {}", tool.name(), e);
+            let err_msg = format!("安装 {} 时出错: {}", tool.name(), e);
             println!("错误: {}", err_msg);
             error!("{}", err_msg);
             Err(err_msg)
@@ -159,54 +193,20 @@ pub fn download_tool(tool: &Tool, bin_dir: &Path) -> Result<(), String> {
 
 // 检查并安装所有工具
 pub fn check_and_install_tools() -> Result<(), String> {
-    info!("检查工具安装状态");
+    info!("开始安装工具");
     
-    // 获取.omni-ai目录
-    let home_dir = dirs::home_dir().ok_or_else(|| "无法获取用户主目录".to_string())?;
-    let omni_dir = home_dir.join(".omni-ai");
-    let bin_dir = omni_dir.join("bin");
-    
-    // 确保目录存在
-    if !omni_dir.exists() {
-        info!("创建.omni-ai目录");
-        fs::create_dir_all(&omni_dir).map_err(|e| {
-            let err_msg = format!("无法创建.omni-ai目录: {}", e);
-            error!("{}", err_msg);
-            err_msg
-        })?;
+    // 安装 uv
+    println!("准备安装 uv...");
+    match install_tool(&Tool::Uv) {
+        Ok(_) => info!("uv 安装成功"),
+        Err(e) => warn!("uv 安装失败: {}", e),
     }
     
-    if !bin_dir.exists() {
-        info!("创建bin目录");
-        fs::create_dir_all(&bin_dir).map_err(|e| {
-            let err_msg = format!("无法创建bin目录: {}", e);
-            error!("{}", err_msg);
-            err_msg
-        })?;
-    }
-    
-    // 检查并安装uv
-    let uv = Tool::Uv;
-    if !is_tool_installed(&uv, &bin_dir) {
-        info!("uv未安装，开始下载");
-        match download_tool(&uv, &bin_dir) {
-            Ok(_) => info!("uv安装成功"),
-            Err(e) => warn!("uv安装失败: {}", e),
-        }
-    } else {
-        info!("uv已安装");
-    }
-    
-    // 检查并安装bun
-    let bun = Tool::Bun;
-    if !is_tool_installed(&bun, &bin_dir) {
-        info!("bun未安装，开始下载");
-        match download_tool(&bun, &bin_dir) {
-            Ok(_) => info!("bun安装成功"),
-            Err(e) => warn!("bun安装失败: {}", e),
-        }
-    } else {
-        info!("bun已安装");
+    // 安装 bun
+    println!("准备安装 bun...");
+    match install_tool(&Tool::Bun) {
+        Ok(_) => info!("bun 安装成功"),
+        Err(e) => warn!("bun 安装失败: {}", e),
     }
     
     Ok(())
