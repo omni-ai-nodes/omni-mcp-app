@@ -5,6 +5,7 @@ use log::{info, error, warn};
 pub enum Tool {
     Uv,
     Bun,
+    Git,
 }
 
 impl Tool {
@@ -13,9 +14,10 @@ impl Tool {
         match self {
             Tool::Uv => "uv",
             Tool::Bun => "bun",
+            Tool::Git => "git",
         }
     }
-
+    
     // 检查工具是否已安装
     fn check_installed(&self) -> bool {
         let output = if cfg!(target_os = "windows") {
@@ -68,7 +70,7 @@ impl Tool {
         if self.check_installed() {
             return Err(format!("{} 已经安装", self.name()));
         }
-
+    
         if cfg!(target_os = "windows") {
             match self {
                 Tool::Uv => {
@@ -97,6 +99,27 @@ impl Tool {
                         "irm bun.sh/install.ps1 | iex".to_string()
                     ]
                 )),
+                Tool::Git => {
+                    if cfg!(target_os = "macos") {
+                        Ok((
+                            "brew".to_string(),
+                            vec![
+                                "install".to_string(),
+                                "git".to_string()
+                            ]
+                        ))
+                    } else {
+                        // Linux
+                        Ok((
+                            "apt-get".to_string(),
+                            vec![
+                                "install".to_string(),
+                                "-y".to_string(),
+                                "git".to_string()
+                            ]
+                        ))
+                    }
+                },
             }
         } else {
             // Unix-like systems (macOS, Linux)
@@ -132,6 +155,27 @@ impl Tool {
                         "bash".to_string()
                     ]
                 )),
+                Tool::Git => {
+                    if cfg!(target_os = "macos") {
+                        Ok((
+                            "brew".to_string(),
+                            vec![
+                                "install".to_string(),
+                                "git".to_string()
+                            ]
+                        ))
+                    } else {
+                        // Linux
+                        Ok((
+                            "apt-get".to_string(),
+                            vec![
+                                "install".to_string(),
+                                "-y".to_string(),
+                                "git".to_string()
+                            ]
+                        ))
+                    }
+                },
             }
         }
     }
@@ -209,6 +253,13 @@ pub fn check_and_install_tools() -> Result<(), String> {
         Ok(_) => info!("bun 安装成功"),
         Err(e) => warn!("bun 安装失败: {}", e),
     }
+    
+    // 安装 git
+    println!("准备安装 git...");
+    match install_tool(&Tool::Git) {
+        Ok(_) => info!("git 安装成功"),
+        Err(e) => warn!("git 安装失败: {}", e),
+    }
 
     Ok(())
 }
@@ -228,9 +279,16 @@ pub fn check_tools_status() -> Result<serde_json::Value, String> {
         "未安装"
     };
     
+    let git_status = if Tool::Git.check_installed() {
+        "已安装"
+    } else {
+        "未安装"
+    };
+    
     let status = serde_json::json!({
         "uv": uv_status,
-        "bun": bun_status
+        "bun": bun_status,
+        "git": git_status
     });
     
     Ok(status)
@@ -242,6 +300,7 @@ pub fn install_single_tool(tool: &str) -> Result<(), String> {
     let tool = match tool {
         "uv" => Tool::Uv,
         "bun" => Tool::Bun,
+        "git" => Tool::Git,
         _ => return Err("不支持的工具类型".to_string()),
     };
     

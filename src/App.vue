@@ -60,46 +60,76 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="container">
-    <nav class="nav-menu">
-      <router-link to="/">命令执行</router-link> |
-      <router-link to="/greeter">问候</router-link> |
+  <div class="app-container">
+    <nav class="side-nav">
+      <router-link to="/greeter">Chat</router-link>
+      <router-link to="/">MCP服务安装</router-link>
       <router-link to="/tools">工具管理</router-link>
     </nav>
-    <router-view></router-view>
-  </main>
+    <main class="content-container">
+      <router-view></router-view>
+    </main>
+  </div>
 </template>
 
 <style>
-.container {
-  margin: 0;
-  padding-top: 10vh;
+.app-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.side-nav {
+  width: 200px;
+  background-color: #f1f1f1;
+  padding: 20px 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  text-align: center;
 }
 
-.nav-menu {
-  margin-bottom: 2rem;
-}
-
-.nav-menu a {
+.side-nav a {
   color: #2c3e50;
   text-decoration: none;
-  padding: 0.5rem 1rem;
+  padding: 10px 20px;
+  margin: 5px 0;
+  border-left: 3px solid transparent;
 }
 
-.nav-menu a.router-link-active {
+.side-nav a.router-link-active {
   color: #42b983;
+  border-left: 3px solid #42b983;
+  background-color: rgba(66, 185, 131, 0.1);
+}
+
+.content-container {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  /* 隐藏滚动条但保留功能 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* 为 Webkit 浏览器隐藏滚动条 */
+.content-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* 全局隐藏所有滚动条 */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
 }
 
 @media (prefers-color-scheme: dark) {
-  .nav-menu a {
+  .side-nav {
+    background-color: #1a1a1a;
+  }
+  
+  .side-nav a {
     color: #ffffff;
   }
   
-  .nav-menu a.router-link-active {
+  .side-nav a.router-link-active {
     color: #42b983;
   }
 }
@@ -240,6 +270,37 @@ onMounted(async () => {
   -webkit-font-smoothing: antialased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
+}
+
+/* 响应式布局 */
+@media (max-width: 768px) {
+  .app-container {
+    flex-direction: column;
+  }
+  
+  .side-nav {
+    width: 100%;
+    padding: 10px 0;
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .side-nav a {
+    padding: 8px 15px;
+    margin: 3px;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+  }
+  
+  .side-nav a.router-link-active {
+    border-left: none;
+    border-bottom: 3px solid #42b983;
+  }
+  
+  .content-container {
+    padding: 10px;
+  }
 }
 
 @media (prefers-color-scheme: dark) {

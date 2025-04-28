@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";  // 添加这行导入语句
 
 const cmdInput = ref("");
@@ -8,6 +8,24 @@ const cmdOutput = ref("");
 const cmdError = ref("");
 const isLoading = ref(false);
 const commandHistory = ref<string[]>([]);
+const containerWidth = ref("100%");
+
+// 保存用户调整的宽度到本地存储
+function saveContainerWidth() {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('commandExecutorWidth', containerWidth.value);
+  }
+}
+
+// 从本地存储加载用户之前调整的宽度
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    const savedWidth = localStorage.getItem('commandExecutorWidth');
+    if (savedWidth) {
+      containerWidth.value = savedWidth;
+    }
+  }
+});
 
 async function executeCommand() {
   try {
@@ -23,7 +41,7 @@ async function executeCommand() {
         cmd: cmdInput.value,
         args: cmdArgs.value ? cmdArgs.value.split(" ") : []
     });
-    cmdOutput.value = result;
+    cmdOutput.value = result as string;
   } catch (error) {
     console.error("命令执行失败:", error);
     cmdError.value = `执行失败: ${error}`;
@@ -34,7 +52,7 @@ async function executeCommand() {
 </script>
 
 <template>
-  <div class="command-section">
+  <div class="command-section" :style="{ width: containerWidth }">
     <h2>命令执行</h2>
     <form class="row" @submit.prevent="executeCommand">
       <input 
@@ -73,14 +91,17 @@ async function executeCommand() {
 
 <style scoped>
 .command-section {
-  margin-top: 2rem;
-  width: 100%;
+  margin: 2rem auto;
   max-width: 800px;
+  transition: width 0.3s ease;
+  position: relative;
 }
 
 .row {
   display: flex;
-  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 1rem;
 }
 
 .output-container {
@@ -92,6 +113,7 @@ async function executeCommand() {
   max-height: 300px;
   overflow: auto;
   width: 100%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .history-container {
@@ -102,12 +124,18 @@ async function executeCommand() {
 .history-container ul {
   list-style: none;
   padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .history-container li {
   cursor: pointer;
-  padding: 5px;
+  padding: 5px 10px;
   border-radius: 4px;
+  background-color: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  transition: background-color 0.2s;
 }
 
 .loading {
@@ -129,8 +157,46 @@ async function executeCommand() {
 }
 
 #cmd-input, #args-input {
-  flex: 2;
-  margin-right: 5px;
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  background-color: #42b983;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+button:hover {
+  background-color: #3aa876;
+}
+
+button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .command-section {
+    width: 95% !important;
+  }
+  
+  .row {
+    flex-direction: column;
+  }
+  
+  #cmd-input, #args-input {
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 8px;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -138,8 +204,19 @@ async function executeCommand() {
     background-color: #1a1a1a;
   }
   
+  .history-container li {
+    background-color: #2a2a2a;
+    border-color: #333;
+  }
+  
   .history-container li:hover {
     background-color: #333;
+  }
+  
+  #cmd-input, #args-input {
+    background-color: #2a2a2a;
+    border-color: #444;
+    color: #fff;
   }
 }
 </style>

@@ -5,7 +5,8 @@ import { invoke } from "@tauri-apps/api/core";
 // 添加工具状态
 const toolsStatus = ref({
   uv: "未安装",
-  bun: "未安装"
+  bun: "未安装",
+  git: "未安装"
 });
 
 const cmdOutput = ref("");
@@ -49,27 +50,37 @@ checkToolsStatus();
 </script>
 
 <template>
-  <div class="tools-section" v-if="Object.values(toolsStatus).includes('未安装')">
+  <div class="tools-section">
     <h2>工具管理</h2>
     <div class="tools-grid">
-      <div class="tool-card" v-if="toolsStatus.uv === '未安装'">
+      <div class="tool-card">
         <h3>UV</h3>
         <p>状态: {{ toolsStatus.uv }}</p>
         <button 
           @click="installTool('uv')"
-          :disabled="isLoading"
+          :disabled="isLoading || toolsStatus.uv === '已安装'"
         >
-          {{ isLoading ? '安装中...' : '安装 UV' }}
+          {{ isLoading ? '安装中...' : (toolsStatus.uv === '已安装' ? '已安装' : '安装 UV') }}
         </button>
       </div>
-      <div class="tool-card" v-if="toolsStatus.bun === '未安装'">
+      <div class="tool-card">
         <h3>Bun</h3>
         <p>状态: {{ toolsStatus.bun }}</p>
         <button 
           @click="installTool('bun')"
-          :disabled="isLoading"
+          :disabled="isLoading || toolsStatus.bun === '已安装'"
         >
-          {{ isLoading ? '安装中...' : '安装 Bun' }}
+          {{ isLoading ? '安装中...' : (toolsStatus.bun === '已安装' ? '已安装' : '安装 Bun') }}
+        </button>
+      </div>
+      <div class="tool-card">
+        <h3>Git</h3>
+        <p>状态: {{ toolsStatus.git }}</p>
+        <button 
+          @click="installTool('git')"
+          :disabled="isLoading || toolsStatus.git === '已安装'"
+        >
+          {{ isLoading ? '安装中...' : (toolsStatus.git === '已安装' ? '已安装' : '安装 Git') }}
         </button>
       </div>
     </div>
