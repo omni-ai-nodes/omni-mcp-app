@@ -1,7 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import CommandExecutor from '../components/CommandExecutor.vue'
-import Greeter from '../components/Greeter.vue'
+import Greeter from '../components/GreeterChat.vue'
 import ToolManager from '../components/ToolManager.vue'
+import ModelSettings from '../components/ModelSettings.vue'
 
 const routes = [
   {
@@ -10,7 +11,7 @@ const routes = [
     component: CommandExecutor
   },
   {
-    path: '/greeter',
+    path: '/greeterChat',
     name: 'Greeter',
     component: Greeter
   },
@@ -18,6 +19,11 @@ const routes = [
     path: '/tools',
     name: 'ToolManager',
     component: ToolManager
+  },
+  {
+    path: '/settings/model',
+    name: 'ModelSettings',
+    component: ModelSettings
   }
 ]
 

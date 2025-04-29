@@ -99,7 +99,7 @@ function changeLanguage(event: Event) {
   <div class="app-container">
     <nav class="side-nav">
       <div class="nav-links">
-        <router-link to="/greeter">
+        <router-link to="/greeterChat">
           <i class="icon chat-icon"></i>
           <span>Chat</span>
         </router-link>

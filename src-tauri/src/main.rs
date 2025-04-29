@@ -5,6 +5,7 @@ mod tools;
 mod commands;
 mod github_handler;
 use github_handler::open_github_link;
+mod model_config;
 
 fn main() {
     tauri::Builder::default()
@@ -13,7 +14,9 @@ fn main() {
             tools::install_single_tool,
             tools::check_and_install_tools,
             commands::execute_command,
-            open_github_link
+            open_github_link,
+            model_config::save_model_config,
+            model_config::get_model_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
