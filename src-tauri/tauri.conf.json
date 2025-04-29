@@ -13,14 +13,14 @@
     "windows": [
       {
         "title": "omni-mcp-app",
-        "width": 900,
-        "height": 650,
-        "resizable": true,
         "fullscreen": false,
+        "height": 950,
+        "width": 1350,
+        "minHeight": 950,
+        "minWidth": 1350,
+        "resizable": true,
         "decorations": true,
-        "transparent": false,
-        "minWidth": 600,
-        "minHeight": 400
+        "transparent": false
       }
     ],
     "security": {

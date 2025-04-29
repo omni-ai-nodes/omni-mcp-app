@@ -16,12 +16,15 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs" }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 dirs = "5.0.1"
 log = "0.4"
 env_logger = "0.10"
+fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs" }
+open = "3"
