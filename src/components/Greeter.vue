@@ -30,10 +30,10 @@ async function greet() {
 
 <template>
   <div class="greeting-section" :style="{ width: containerWidth }">
-    <h2>问候功能</h2>
+    <h2>{{ $t('message.greeting') }}</h2>
     <form class="row" @submit.prevent="greet">
-      <input id="greet-input" v-model="name" placeholder="输入名字..." />
-      <button type="submit">问候</button>
+      <input id="greet-input" v-model="name" :placeholder="$t('message.enterName')" />
+      <button type="submit">{{ $t('message.greet') }}</button>
     </form>
     <p class="greeting-message">{{ greetMsg }}</p>
   </div>

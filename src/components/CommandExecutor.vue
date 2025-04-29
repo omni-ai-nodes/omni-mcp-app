@@ -53,26 +53,26 @@ async function executeCommand() {
 
 <template>
   <div class="command-section" :style="{ width: containerWidth }">
-    <h2>命令执行</h2>
+    <h2>{{ $t('message.commandExecution') }}</h2>
     <form class="row" @submit.prevent="executeCommand">
       <input 
         id="cmd-input" 
         v-model="cmdInput" 
-        placeholder="输入命令..." 
+        :placeholder="$t('message.enterCommand')" 
         required
       />
       <input 
         id="args-input" 
         v-model="cmdArgs" 
-        placeholder="参数（可选）" 
+        :placeholder="$t('message.parameters')" 
       />
       <button type="submit" :disabled="isLoading">
-        {{ isLoading ? '执行中...' : '执行' }}
+        {{ isLoading ? $t('message.executing') : $t('message.execute') }}
       </button>
     </form>
     
     <div v-if="commandHistory.length > 0" class="history-container">
-      <h3>命令历史</h3>
+      <h3>{{ $t('message.commandHistory') }}</h3>
       <ul>
         <li v-for="(cmd, index) in commandHistory" :key="index" @click="cmdInput = cmd">
           {{ cmd }}
@@ -81,8 +81,8 @@ async function executeCommand() {
     </div>
     
     <div class="output-container">
-      <h3>执行结果</h3>
-      <div v-if="isLoading" class="loading">命令执行中...</div>
+      <h3>{{ $t('message.executionResult') }}</h3>
+      <div v-if="isLoading" class="loading">{{ $t('message.executingCommand') }}</div>
       <pre v-if="cmdOutput" class="cmd-output">{{ cmdOutput }}</pre>
       <pre v-if="cmdError" class="cmd-error">{{ cmdError }}</pre>
     </div>
