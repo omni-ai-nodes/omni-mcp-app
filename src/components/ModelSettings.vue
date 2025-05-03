@@ -244,9 +244,30 @@ async function saveOllamaConfig() {
 
 .config-section {
   padding: 20px;
-  border: 1px solid #ddd;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
-  background-color: white;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: inherit;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  color: inherit;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: inherit;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #42b983;
 }
 
 .form-group {
