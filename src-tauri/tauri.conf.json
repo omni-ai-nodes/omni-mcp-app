@@ -14,10 +14,10 @@
       {
         "title": "omni-mcp-app",
         "fullscreen": false,
-        "height": 950,
-        "width": 1350,
-        "minHeight": 950,
-        "minWidth": 1350,
+        "height": 750,
+        "width": 1130,
+        "minHeight": 750,
+        "minWidth": 1130,
         "resizable": true,
         "decorations": true,
         "transparent": false
