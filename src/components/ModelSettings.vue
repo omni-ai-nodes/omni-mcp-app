@@ -69,6 +69,23 @@ async function saveOllamaConfig() {
     console.error('保存Ollama配置失败:', error);
   }
 }
+
+const formatApiUrl = (url: string) => {
+  if (!url) return '';
+  if (url.endsWith('#')) {
+    return url.slice(0, -1); // 移除#并保持原始地址
+  }
+  if (url.endsWith('/')) {
+    const baseUrl = url.slice(0, -1); // 移除末尾的/
+    return `${baseUrl}/v1/chat/completions`;
+  }
+  return url;
+};
+
+const handleApiUrlInput = (event: Event, config: any) => {
+  const input = (event.target as HTMLInputElement).value;
+  config.apiKey = formatApiUrl(input);
+};
 </script>
 
 <template>
@@ -102,9 +119,17 @@ async function saveOllamaConfig() {
           <h3>OpenAI配置</h3>
           <form @submit.prevent="saveOpenAIConfig">
             <div class="form-group">
-              <label>API Key:</label>
-              <input type="password" v-model="openaiConfig.apiKey" />
-            </div>
+                <label>API 地址:</label>
+                <input 
+                  type="text" 
+                  :value="newApiConfig.apiKey"
+                  @input="(e) => handleApiUrlInput(e, newApiConfig)"
+                  placeholder="https://api.siliconflow.cn" 
+                />
+                <div class="input-tip">
+                  提示：/ 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
+                </div>
+              </div>
             <div class="form-group">
               <label>模型名称:</label>
               <input type="text" v-model="openaiConfig.model" />
@@ -121,9 +146,17 @@ async function saveOllamaConfig() {
           <h3>Ollama配置</h3>
           <form @submit.prevent="saveOllamaConfig">
             <div class="form-group">
-              <label>端点地址:</label>
-              <input type="text" v-model="ollamaConfig.endpoint" />
-            </div>
+                <label>API 地址:</label>
+                <input 
+                  type="text" 
+                  :value="newApiConfig.apiKey"
+                  @input="(e) => handleApiUrlInput(e, newApiConfig)"
+                  placeholder="https://api.siliconflow.cn" 
+                />
+                <div class="input-tip">
+                  提示：/ 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
+                </div>
+              </div>
             <div class="form-group">
               <label>模型名称:</label>
               <input type="text" v-model="ollamaConfig.model" />
@@ -140,12 +173,19 @@ async function saveOllamaConfig() {
               <input type="text" v-model="newApiConfig.name" required />
             </div>
             <div class="form-group">
-              <label>API Key:</label>
-              <input type="password" v-model="newApiConfig.apiKey" />
-            </div>
-            <div class="form-group">
-              <label>模型名称:</label>
-              <input type="text" v-model="newApiConfig.model" />
+              <!-- OpenAI配置部分 -->
+              <div class="form-group">
+                <label>API 地址:</label>
+                <input 
+                  type="text" 
+                  :value="openaiConfig.apiKey"
+                  @input="(e) => handleApiUrlInput(e, openaiConfig)"
+                  placeholder="https://api.siliconflow.cn" 
+                />
+                <div class="input-tip">
+                  提示：/ 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
+                </div>
+              </div>
             </div>
             <div class="form-group">
               <label>Session Key:</label>
@@ -297,5 +337,21 @@ button {
 
 button:hover {
   background-color: #3aa876;
+}
+
+.input-tip {
+  font-size: 0.8em;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font-family: monospace;
 }
 </style>
