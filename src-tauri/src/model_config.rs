@@ -2,9 +2,9 @@ use rusqlite::{Connection, Result};
 use serde::{Deserialize, Serialize};
 use dirs;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ModelConfig {
-    pub api_key: String,
+    pub api_url: String,
     pub model: String,
     pub session_key: String,
     pub endpoint: Option<String>,
@@ -22,7 +22,7 @@ pub fn init_db() -> Result<Connection> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS model_configs (
             provider TEXT PRIMARY KEY,
-            api_key TEXT,
+            api_url TEXT,
             model TEXT,
             session_key TEXT,
             endpoint TEXT
@@ -34,37 +34,18 @@ pub fn init_db() -> Result<Connection> {
 }
 
 #[tauri::command]
-pub async fn save_model_config(provider: String, config: ModelConfig) -> Result<(), String> {
-    let conn = init_db().map_err(|e| e.to_string())?;
-    
-    conn.execute(
-        "INSERT OR REPLACE INTO model_configs (provider, api_key, model, session_key, endpoint) 
-         VALUES (?1, ?2, ?3, ?4, ?5)",
-        [
-            &provider,
-            &config.api_key,
-            &config.model,
-            &config.session_key,
-            &config.endpoint.unwrap_or_default(),
-        ],
-    ).map_err(|e| e.to_string())?;
-    
-    Ok(())
-}
-
-#[tauri::command]
 pub async fn get_model_config(provider: String) -> Result<Option<ModelConfig>, String> {
     let conn = init_db().map_err(|e| e.to_string())?;
     
     let mut stmt = conn.prepare(
-        "SELECT api_key, model, session_key, endpoint 
+        "SELECT api_url, model, session_key, endpoint 
          FROM model_configs 
-         WHERE provider = ?1"
+         WHERE provider = ?"
     ).map_err(|e| e.to_string())?;
     
     let result = stmt.query_row([&provider], |row| {
         Ok(ModelConfig {
-            api_key: row.get(0)?,
+            api_url: row.get(0)?,
             model: row.get(1)?,
             session_key: row.get(2)?,
             endpoint: row.get(3)?,
@@ -72,4 +53,23 @@ pub async fn get_model_config(provider: String) -> Result<Option<ModelConfig>, S
     }).ok();
     
     Ok(result)
+}
+
+#[tauri::command]
+pub async fn save_model_config(provider: String, config: ModelConfig) -> Result<(), String> {
+    let conn = init_db().map_err(|e| e.to_string())?;
+    
+    conn.execute(
+        "INSERT OR REPLACE INTO model_configs (provider, api_url, model, session_key, endpoint) 
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        [
+            &provider,
+            &config.api_url,
+            &config.model,
+            &config.session_key,
+            &config.endpoint.unwrap_or_default(),
+        ],
+    ).map_err(|e| e.to_string())?;
+    
+    Ok(())
 }

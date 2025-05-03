@@ -6,7 +6,7 @@ const activeMenu = ref('openai');
 const customConfigs = ref([]);
 
 const openaiConfig = ref({
-  apiKey: '',
+  apiUrl: '',
   model: '',
   sessionKey: ''
 });
@@ -18,7 +18,7 @@ const ollamaConfig = ref({
 
 const newApiConfig = ref({
   name: '',
-  apiKey: '',
+  apiUrl: '',
   model: '',
   sessionKey: ''
 });
@@ -53,7 +53,7 @@ async function saveOpenAIConfig() {
       provider: 'openai',
       config: {
         ...openaiConfig.value,
-        apiKey: formatApiUrl(openaiConfig.value.apiKey)
+        apiUrl: formatApiUrl(openaiConfig.value.apiUrl)
       }
     });
     await loadModelConfigs(); // 保存后重新加载
@@ -93,7 +93,7 @@ async function saveNewApiConfig() {
   try {
     await invoke('save_custom_config', { config: newApiConfig.value });
     await loadCustomConfigs();
-    newApiConfig.value = { name: '', apiKey: '', model: '', sessionKey: '' };
+    newApiConfig.value = { name: '', apiUrl: '', model: '', sessionKey: '' };
   } catch (error) {
     console.error('保存API配置失败:', error);
   }
@@ -113,7 +113,7 @@ const formatApiUrl = (url: string) => {
 
 const handleApiUrlInput = (event: Event, config: any) => {
   const input = (event.target as HTMLInputElement).value;
-  config.apiKey = formatApiUrl(input);
+  config.apiUrl = formatApiUrl(input);
 };
 </script>
 
@@ -151,8 +151,8 @@ const handleApiUrlInput = (event: Event, config: any) => {
                 <label>API 地址:</label>
                 <input 
                   type="text" 
-                  :value="newApiConfig.apiKey"
-                  @input="(e) => handleApiUrlInput(e, newApiConfig)"
+                  :value="openaiConfig.apiUrl"
+                  @input="(e) => handleApiUrlInput(e, openaiConfig)"
                   placeholder="https://api.siliconflow.cn" 
                 />
                 <div class="input-tip">
@@ -178,8 +178,8 @@ const handleApiUrlInput = (event: Event, config: any) => {
                 <label>API 地址:</label>
                 <input 
                   type="text" 
-                  :value="newApiConfig.apiKey"
-                  @input="(e) => handleApiUrlInput(e, newApiConfig)"
+                  :value="ollamaConfig.endpoint"
+                  @input="(e) => handleApiUrlInput(e, ollamaConfig)"
                   placeholder="https://api.siliconflow.cn" 
                 />
                 <div class="input-tip">
@@ -205,7 +205,7 @@ const handleApiUrlInput = (event: Event, config: any) => {
               <label>API 地址:</label>
               <input 
                 type="text" 
-                :value="newApiConfig.apiKey"
+                :value="newApiConfig.apiUrl"
                 @input="(e) => handleApiUrlInput(e, newApiConfig)"
                 placeholder="https://api.siliconflow.cn" 
               />
