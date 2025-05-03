@@ -25,7 +25,58 @@ const newApiConfig = ref({
 
 onMounted(async () => {
   await loadCustomConfigs();
+  await loadModelConfigs();
 });
+
+async function loadModelConfigs() {
+  try {
+    // 加载 OpenAI 配置
+    const openaiResult = await invoke('get_model_config', { provider: 'openai' });
+    if (openaiResult) {
+      openaiConfig.value = openaiResult;
+    }
+    
+    // 加载 Ollama 配置
+    const ollamaResult = await invoke('get_model_config', { provider: 'ollama' });
+    if (ollamaResult) {
+      ollamaConfig.value = ollamaResult;
+    }
+  } catch (error) {
+    console.error('加载模型配置失败:', error);
+  }
+}
+
+async function saveOpenAIConfig() {
+  try {
+    console.log('Saving OpenAI config:', openaiConfig.value);
+    await invoke('save_model_config', { 
+      provider: 'openai',
+      config: {
+        ...openaiConfig.value,
+        apiKey: formatApiUrl(openaiConfig.value.apiKey)
+      }
+    });
+    await loadModelConfigs(); // 保存后重新加载
+  } catch (error) {
+    console.error('保存OpenAI配置失败:', error);
+  }
+}
+
+async function saveOllamaConfig() {
+  try {
+    console.log('Saving Ollama config:', ollamaConfig.value);
+    await invoke('save_model_config', { 
+      provider: 'ollama',
+      config: {
+        ...ollamaConfig.value,
+        endpoint: formatApiUrl(ollamaConfig.value.endpoint)
+      }
+    });
+    await loadModelConfigs(); // 保存后重新加载
+  } catch (error) {
+    console.error('保存Ollama配置失败:', error);
+  }
+}
 
 async function loadCustomConfigs() {
   try {
@@ -45,28 +96,6 @@ async function saveNewApiConfig() {
     newApiConfig.value = { name: '', apiKey: '', model: '', sessionKey: '' };
   } catch (error) {
     console.error('保存API配置失败:', error);
-  }
-}
-
-async function saveOpenAIConfig() {
-  try {
-    await invoke('save_model_config', { 
-      provider: 'openai',
-      config: openaiConfig.value 
-    });
-  } catch (error) {
-    console.error('保存OpenAI配置失败:', error);
-  }
-}
-
-async function saveOllamaConfig() {
-  try {
-    await invoke('save_model_config', { 
-      provider: 'ollama',
-      config: ollamaConfig.value 
-    });
-  } catch (error) {
-    console.error('保存Ollama配置失败:', error);
   }
 }
 
@@ -173,19 +202,20 @@ const handleApiUrlInput = (event: Event, config: any) => {
               <input type="text" v-model="newApiConfig.name" required />
             </div>
             <div class="form-group">
-              <!-- OpenAI配置部分 -->
-              <div class="form-group">
-                <label>API 地址:</label>
-                <input 
-                  type="text" 
-                  :value="openaiConfig.apiKey"
-                  @input="(e) => handleApiUrlInput(e, openaiConfig)"
-                  placeholder="https://api.siliconflow.cn" 
-                />
-                <div class="input-tip">
-                  提示：/ 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
-                </div>
+              <label>API 地址:</label>
+              <input 
+                type="text" 
+                :value="newApiConfig.apiKey"
+                @input="(e) => handleApiUrlInput(e, newApiConfig)"
+                placeholder="https://api.siliconflow.cn" 
+              />
+              <div class="input-tip">
+                提示：/ 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
               </div>
+            </div>
+            <div class="form-group">
+              <label>模型名称:</label>
+              <input type="text" v-model="newApiConfig.model" />
             </div>
             <div class="form-group">
               <label>Session Key:</label>

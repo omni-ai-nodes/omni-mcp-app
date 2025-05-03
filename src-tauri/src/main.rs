@@ -20,6 +20,9 @@ async fn get_custom_configs() -> Result<Vec<CustomConfig>, String> {
     db::get_custom_configs().map_err(|e| e.to_string())
 }
 
+// Remove this unused import
+// use crate::db::ModelConfig;
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
