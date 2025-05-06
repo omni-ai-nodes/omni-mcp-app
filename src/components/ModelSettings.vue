@@ -8,10 +8,12 @@ const customConfigs = ref([]);
 const openaiConfig = ref({
   api_url: '',
   model: '',
-  sessionKey: ''
+  session_key: '',
+  endpoint: ''
 });
 
 const ollamaConfig = ref({
+  api_url: '',
   endpoint: '',
   model: ''
 });
@@ -20,7 +22,7 @@ const newApiConfig = ref({
   name: '',
   api_url: '',
   model: '',
-  sessionKey: ''
+  session_key: ''
 });
 
 onMounted(async () => {
@@ -52,8 +54,10 @@ async function saveOpenAIConfig() {
     await invoke('save_model_config', { 
       provider: 'openai',
       config: {
-        ...openaiConfig.value,
-        api_url: formatapi_url(openaiConfig.value.api_url)
+        api_url: formatapi_url(openaiConfig.value.api_url),
+        model: openaiConfig.value.model,
+        session_key: openaiConfig.value.session_key, // 添加这一行
+        endpoint: openaiConfig.value.endpoint
       }
     });
     await loadModelConfigs(); // 保存后重新加载
@@ -68,7 +72,10 @@ async function saveOllamaConfig() {
     await invoke('save_model_config', { 
       provider: 'ollama',
       config: {
-        ...ollamaConfig.value,
+        api_url: ollamaConfig.value.api_url,
+        model: ollamaConfig.value.model,
+        session_key: ollamaConfig.value.session_key || '',
+        session_key: ollamaConfig.value.session_key || '', // 添加这一行
         endpoint: formatapi_url(ollamaConfig.value.endpoint)
       }
     });
@@ -93,7 +100,7 @@ async function saveNewApiConfig() {
   try {
     await invoke('save_custom_config', { config: newApiConfig.value });
     await loadCustomConfigs();
-    newApiConfig.value = { name: '', api_url: '', model: '', sessionKey: '' };
+    newApiConfig.value = { name: '', api_url: '', model: '', session_key: '' };
   } catch (error) {
     console.error('保存API配置失败:', error);
   }
@@ -165,7 +172,7 @@ const handleapi_urlInput = (event: Event, config: any) => {
             </div>
             <div class="form-group">
               <label>Session Key:</label>
-              <input type="text" v-model="openaiConfig.sessionKey" />
+              <input type="text" v-model="openaiConfig.session_key" />
             </div>
             <button type="submit">保存配置</button>
           </form>
@@ -219,7 +226,7 @@ const handleapi_urlInput = (event: Event, config: any) => {
             </div>
             <div class="form-group">
               <label>Session Key:</label>
-              <input type="text" v-model="newApiConfig.sessionKey" />
+              <input type="text" v-model="newApiConfig.session_key" />
             </div>
             <button type="submit">保存配置</button>
           </form>
@@ -265,9 +272,9 @@ const handleapi_urlInput = (event: Event, config: any) => {
 .settings-menu {
   width: 200px;
   padding: 20px;
-  background-color: #1a1a1a;
+  background-color: #f5f5f5;
   border-radius: 8px;
-  color: #ffffff;
+  color: #333333;
 }
 
 .settings-menu h3 {
@@ -290,7 +297,7 @@ const handleapi_urlInput = (event: Event, config: any) => {
 }
 
 .settings-menu li:hover {
-  background-color: #333333;
+  background-color: #e0e0e0;
 }
 
 .settings-menu li.active {
@@ -314,30 +321,9 @@ const handleapi_urlInput = (event: Event, config: any) => {
 
 .config-section {
   padding: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid #ddd;
   border-radius: 8px;
-  background-color: rgba(255, 255, 255, 0.05);
-  color: inherit;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  color: inherit;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  background-color: rgba(255, 255, 255, 0.05);
-  color: inherit;
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: #42b983;
+  background-color: #f9f9f9;
 }
 
 .form-group {
@@ -354,6 +340,14 @@ const handleapi_urlInput = (event: Event, config: any) => {
   padding: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
+  background-color: #fff;
+  color: #333;
+  font-family: monospace;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #42b983;
 }
 
 button {
@@ -371,17 +365,34 @@ button:hover {
 
 .input-tip {
   font-size: 0.8em;
-  color: rgba(255, 255, 255, 0.5);
+  color: #666;
   margin-top: 4px;
 }
 
-.form-group input {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  background-color: rgba(255, 255, 255, 0.05);
-  color: inherit;
-  font-family: monospace;
+@media (prefers-color-scheme: dark) {
+  .settings-menu {
+    background-color: #1a1a1a;
+    color: #ffffff;
+  }
+  
+  .settings-menu li:hover {
+    background-color: #333333;
+  }
+  
+  .config-section {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #fff;
+  }
+  
+  .form-group input {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #fff;
+  }
+  
+  .input-tip {
+    color: rgba(255, 255, 255, 0.5);
+  }
 }
 </style>

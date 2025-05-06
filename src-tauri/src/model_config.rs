@@ -10,6 +10,25 @@ pub struct ModelConfig {
     pub endpoint: Option<String>,
 }
 
+// 检查列是否存在的函数
+fn column_exists(conn: &Connection, table: &str, column: &str) -> bool {
+    let query = format!("PRAGMA table_info({})", table);
+    let mut stmt = conn.prepare(&query).unwrap();
+    let columns = stmt.query_map([], |row| {
+        let name: String = row.get(1)?;
+        Ok(name)
+    }).unwrap();
+    
+    for col_result in columns {
+        if let Ok(name) = col_result {
+            if name == column {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 pub fn init_db() -> Result<Connection> {
     let app_dir = dirs::data_dir()
         .expect("无法获取应用数据目录")
@@ -17,38 +36,112 @@ pub fn init_db() -> Result<Connection> {
     
     std::fs::create_dir_all(&app_dir).expect("无法创建应用数据目录");
     let db_path = app_dir.join("model_config.db");
+    println!("数据库路径: {:?}", db_path);
+    
     let conn = Connection::open(db_path)?;
     
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS model_configs (
-            provider TEXT PRIMARY KEY,
-            api_url TEXT,
-            model TEXT,
-            session_key TEXT,
-            endpoint TEXT
-        )",
+    // 检查表是否存在
+    let table_exists = conn.query_row(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='model_configs'",
         [],
-    )?;
+        |_| Ok(true)
+    ).unwrap_or(false);
+    
+    println!("表是否存在: {}", table_exists);
+    
+    if table_exists {
+        // 获取并打印表结构信息
+        let mut stmt = conn.prepare("PRAGMA table_info(model_configs)").unwrap();
+        let columns = stmt.query_map([], |row| {
+            let column_name: String = row.get(1)?;
+            let column_type: String = row.get(2)?;
+            Ok((column_name, column_type))
+        }).unwrap();
+        
+        println!("表结构信息:");
+        for column in columns {
+            if let Ok((name, type_)) = column {
+                println!("列名: {}, 类型: {}", name, type_);
+            }
+        }
+        
+        // 使用新的函数检查列是否存在
+        let api_url_exists = column_exists(&conn, "model_configs", "api_url");
+        println!("api_url列是否存在: {}", api_url_exists);
+        
+        if !api_url_exists {
+            match conn.execute("ALTER TABLE model_configs ADD COLUMN api_url TEXT", []) {
+                Ok(_) => println!("成功添加api_url列"),
+                Err(e) => println!("添加api_url列失败: {}", e),
+            }
+        }
+        
+        let endpoint_exists = column_exists(&conn, "model_configs", "endpoint");
+        println!("endpoint列是否存在: {}", endpoint_exists);
+        
+        if !endpoint_exists {
+            match conn.execute("ALTER TABLE model_configs ADD COLUMN endpoint TEXT", []) {
+                Ok(_) => println!("成功添加endpoint列"),
+                Err(e) => println!("添加endpoint列失败: {}", e),
+            }
+        }
+    } else {
+        // 创建新表
+        match conn.execute(
+            "CREATE TABLE model_configs (
+                provider TEXT PRIMARY KEY,
+                api_url TEXT,
+                model TEXT,
+                session_key TEXT,
+                endpoint TEXT
+            )",
+            [],
+        ) {
+            Ok(_) => println!("成功创建model_configs表"),
+            Err(e) => println!("创建表失败: {}", e),
+        }
+    }
     
     Ok(conn)
 }
 
 #[tauri::command]
 pub async fn get_model_config(provider: String) -> Result<Option<ModelConfig>, String> {
-    let conn = init_db().map_err(|e| e.to_string())?;
+    let conn = match init_db() {
+        Ok(conn) => conn,
+        Err(e) => {
+            let error_msg = format!("初始化数据库失败: {}", e);
+            println!("{}", error_msg);
+            return Err(error_msg);
+        }
+    };
     
-    let mut stmt = conn.prepare(
-        "SELECT api_url, model, session_key, endpoint 
-         FROM model_configs 
-         WHERE provider = ?"
-    ).map_err(|e| e.to_string())?;
+    let query = format!("SELECT api_url, model, session_key, endpoint FROM model_configs WHERE provider = '{}'", provider);
+    println!("执行查询: {}", query);
     
-    let result = stmt.query_row([&provider], |row| {
+    let mut stmt = match conn.prepare(&query) {
+        Ok(stmt) => stmt,
+        Err(e) => {
+            let error_msg = format!("准备查询语句失败: {}", e);
+            println!("{}", error_msg);
+            return Err(error_msg);
+        }
+    };
+    
+    let result = stmt.query_row([/*&provider*/], |row| {
+        let api_url: Result<String> = row.get(0);
+        let model: Result<String> = row.get(1);
+        let session_key: Result<String> = row.get(2);
+        let endpoint: Result<Option<String>> = row.get(3);
+        
+        println!("查询结果: api_url={:?}, model={:?}, session_key={:?}, endpoint={:?}", 
+                 api_url, model, session_key, endpoint);
+        
         Ok(ModelConfig {
-            api_url: row.get(0)?,
-            model: row.get(1)?,
-            session_key: row.get(2)?,
-            endpoint: row.get(3)?,
+            api_url: api_url?,
+            model: model?,
+            session_key: session_key?,
+            endpoint: endpoint?,
         })
     }).ok();
     
@@ -57,19 +150,48 @@ pub async fn get_model_config(provider: String) -> Result<Option<ModelConfig>, S
 
 #[tauri::command]
 pub async fn save_model_config(provider: String, config: ModelConfig) -> Result<(), String> {
-    let conn = init_db().map_err(|e| e.to_string())?;
+    println!("保存配置: provider={}, config={:?}", provider, config);
     
-    conn.execute(
-        "INSERT OR REPLACE INTO model_configs (provider, api_url, model, session_key, endpoint) 
-         VALUES (?1, ?2, ?3, ?4, ?5)",
+    let conn = match init_db() {
+        Ok(conn) => conn,
+        Err(e) => {
+            let error_msg = format!("初始化数据库失败: {}", e);
+            println!("{}", error_msg);
+            return Err(error_msg);
+        }
+    };
+    
+    // Use as_ref() to borrow the Option's contents instead of moving it
+    let endpoint_value = config.endpoint.as_ref().map_or_else(String::new, |s| s.clone());
+    
+    let query = format!(
+        "INSERT OR REPLACE INTO model_configs (provider, api_url, model, session_key, endpoint) VALUES ('{}', '{}', '{}', '{}', '{}')",
+        provider,
+        config.api_url,
+        config.model,
+        config.session_key,
+        endpoint_value
+    );
+    println!("执行SQL: {}", query);
+    
+    match conn.execute(
+        "INSERT OR REPLACE INTO model_configs (provider, api_url, model, session_key, endpoint) VALUES (?1, ?2, ?3, ?4, ?5)",
         [
             &provider,
             &config.api_url,
             &config.model,
             &config.session_key,
-            &config.endpoint.unwrap_or_default(),
+            &endpoint_value,
         ],
-    ).map_err(|e| e.to_string())?;
-    
-    Ok(())
+    ) {
+        Ok(_) => {
+            println!("保存配置成功");
+            Ok(())
+        },
+        Err(e) => {
+            let error_msg = format!("保存配置失败: {}", e);
+            println!("{}", error_msg);
+            Err(error_msg)
+        }
+    }
 }

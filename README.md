@@ -23,3 +23,5 @@ pnpm create omni-mcp-app
 ```bash
 cargo fix --lib -p omni-mcp-app --allow-dirty
  ```
+### delete model_config.db
+rm ~/Library/Application\ Support/omni-mcp-app/model_config.db
