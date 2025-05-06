@@ -1,24 +1,28 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import CommandExecutor from '../components/CommandExecutor.vue'
-import Greeter from '../components/GreeterChat.vue'
-import ToolManager from '../components/ToolManager.vue'
+import GreeterChat from '../components/GreeterChat.vue'
+import MCPService from '../components/MCPService.vue'
+import Tools from '../components/ToolManager.vue'
 import ModelSettings from '../components/ModelSettings.vue'
 
 const routes = [
   {
     path: '/',
-    name: 'Home',
-    component: CommandExecutor
+    redirect: '/greeterChat'
   },
   {
     path: '/greeterChat',
-    name: 'Greeter',
-    component: Greeter
+    name: 'GreeterChat',
+    component: GreeterChat
+  },
+  {
+    path: '/mcpService',
+    name: 'MCPService',
+    component: MCPService
   },
   {
     path: '/tools',
-    name: 'ToolManager',
-    component: ToolManager
+    name: 'Tools',
+    component: Tools
   },
   {
     path: '/settings/model',

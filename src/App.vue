@@ -101,9 +101,9 @@ function changeLanguage(event: Event) {
       <div class="nav-links">
         <router-link to="/greeterChat">
           <i class="icon chat-icon"></i>
-          <span>Chat</span>
+          <span>{{ $t('message.chat') }}</span>
         </router-link>
-        <router-link to="/">
+        <router-link to="/mcpService">
           <i class="icon server-icon"></i>
           <span>{{ $t('message.mcpService') }}</span>
         </router-link>
