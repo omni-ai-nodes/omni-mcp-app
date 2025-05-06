@@ -163,29 +163,45 @@ pub async fn save_model_config(provider: String, config: ModelConfig) -> Result<
         }
     };
     
+    // 首先检查是否存在相同的 provider
+    let exists = conn.query_row(
+        "SELECT COUNT(*) FROM model_configs WHERE provider = ?",
+        [&provider],
+        |row| row.get::<_, i32>(0)
+    ).unwrap_or(0) > 0;
+
     // Use as_ref() to borrow the Option's contents instead of moving it
     let endpoint_value = config.endpoint.as_ref().map_or_else(String::new, |s| s.clone());
     
-    let query = format!(
-        "INSERT OR REPLACE INTO model_configs (provider, api_url, model, session_key, endpoint) VALUES ('{}', '{}', '{}', '{}', '{}')",
-        provider,
-        config.api_url,
-        config.model,
-        config.session_key,
-        endpoint_value
-    );
-    println!("执行SQL: {}", query);
-    
-    match conn.execute(
-        "INSERT OR REPLACE INTO model_configs (provider, api_url, model, session_key, endpoint) VALUES (?1, ?2, ?3, ?4, ?5)",
-        [
-            &provider,
-            &config.api_url,
-            &config.model,
-            &config.session_key,
-            &endpoint_value,
-        ],
-    ) {
+    let result = if exists {
+        // 如果存在，执行更新操作
+        println!("更新已存在的配置: {}", provider);
+        conn.execute(
+            "UPDATE model_configs SET api_url = ?1, model = ?2, session_key = ?3, endpoint = ?4 WHERE provider = ?5",
+            [
+                &config.api_url,
+                &config.model,
+                &config.session_key,
+                &endpoint_value,
+                &provider,
+            ],
+        )
+    } else {
+        // 如果不存在，执行插入操作
+        println!("插入新配置: {}", provider);
+        conn.execute(
+            "INSERT INTO model_configs (provider, api_url, model, session_key, endpoint) VALUES (?1, ?2, ?3, ?4, ?5)",
+            [
+                &provider,
+                &config.api_url,
+                &config.model,
+                &config.session_key,
+                &endpoint_value,
+            ],
+        )
+    };
+
+    match result {
         Ok(_) => {
             println!("保存配置成功");
             Ok(())

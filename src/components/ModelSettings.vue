@@ -54,10 +54,11 @@ async function saveOpenAIConfig() {
     await invoke('save_model_config', { 
       provider: 'openai',
       config: {
+        provider: 'openai',  // 添加这一行，确保 config 对象中也包含 provider
         api_url: formatapi_url(openaiConfig.value.api_url),
         model: openaiConfig.value.model,
-        session_key: openaiConfig.value.session_key, // 添加这一行
-        endpoint: openaiConfig.value.endpoint
+        session_key: openaiConfig.value.session_key,
+        endpoint: openaiConfig.value.endpoint || ''
       }
     });
     await loadModelConfigs(); // 保存后重新加载
@@ -72,9 +73,10 @@ async function saveOllamaConfig() {
     await invoke('save_model_config', { 
       provider: 'ollama',
       config: {
-        api_url: ollamaConfig.value.api_url,
+        provider: 'ollama',  // 添加这一行，确保 config 对象中也包含 provider
+        api_url: ollamaConfig.value.api_url || '',
         model: ollamaConfig.value.model,
-        session_key: ollamaConfig.value.session_key || '', // 添加这一行
+        session_key: ollamaConfig.value.session_key || '',
         endpoint: formatapi_url(ollamaConfig.value.endpoint)
       }
     });
@@ -107,10 +109,10 @@ async function saveNewApiConfig() {
     // 保存配置名称以便后续使用
     const configName = newApiConfig.value.name;
     
-    // 使用自定义名称作为provider
     await invoke('save_model_config', { 
       provider: configName,
       config: {
+        provider: configName,  // Add this line to include the provider field
         api_url: formatapi_url(newApiConfig.value.api_url),
         model: newApiConfig.value.model,
         session_key: newApiConfig.value.session_key,
@@ -153,8 +155,9 @@ async function updateCustomConfig(config) {
   try {
     console.log('Updating custom config:', config);
     await invoke('save_model_config', { 
-      provider: config.provider,  // 使用 provider 而不是 name
+      provider: config.provider,
       config: {
+        provider: config.provider,  // Add this line to include the provider field
         api_url: formatapi_url(config.api_url),
         model: config.model,
         session_key: config.session_key,
@@ -273,7 +276,7 @@ async function handleCustomConfigClick(config) {
                 <label>API 地址:</label>
                 <input 
                   type="text" 
-                  :value="ollamaConfig.endpoint"
+                  :value="ollamaConfig.api_url"
                   @input="(e) => handleapi_urlInput(e, ollamaConfig)"
                   placeholder="https://api.siliconflow.cn" 
                 />
