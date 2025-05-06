@@ -139,9 +139,9 @@ const formatapi_url = (url: string) => {
   if (url.endsWith('#')) {
     return url.slice(0, -1); // 移除#并保持原始地址
   }
-  if (url.endsWith('/')) {
+  if (url.endsWith('/v')) {
     const baseUrl = url.slice(0, -1); // 移除末尾的/
-    return `${baseUrl}/v1/chat/completions`;
+    return `${baseUrl}v1/chat/completions`;
   }
   return url;
 };
@@ -254,7 +254,7 @@ async function handleCustomConfigClick(config) {
                   placeholder="https://api.siliconflow.cn" 
                 />
                 <div class="input-tip">
-                  提示：/ 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
+                  提示：/v 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
                 </div>
               </div>
             <div class="form-group">
@@ -281,7 +281,7 @@ async function handleCustomConfigClick(config) {
                   placeholder="https://api.siliconflow.cn" 
                 />
                 <div class="input-tip">
-                  提示：/ 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
+                  提示：/v 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
                 </div>
               </div>
             <div class="form-group">
@@ -308,7 +308,7 @@ async function handleCustomConfigClick(config) {
                 placeholder="https://api.siliconflow.cn" 
               />
               <div class="input-tip">
-                提示：/ 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
+                提示：/v 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
               </div>
             </div>
             <div class="form-group">
