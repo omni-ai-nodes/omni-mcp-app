@@ -6,7 +6,7 @@ const activeMenu = ref('openai');
 const customConfigs = ref([]);
 
 const openaiConfig = ref({
-  apiUrl: '',
+  api_url: '',
   model: '',
   sessionKey: ''
 });
@@ -18,7 +18,7 @@ const ollamaConfig = ref({
 
 const newApiConfig = ref({
   name: '',
-  apiUrl: '',
+  api_url: '',
   model: '',
   sessionKey: ''
 });
@@ -53,7 +53,7 @@ async function saveOpenAIConfig() {
       provider: 'openai',
       config: {
         ...openaiConfig.value,
-        apiUrl: formatApiUrl(openaiConfig.value.apiUrl)
+        api_url: formatapi_url(openaiConfig.value.api_url)
       }
     });
     await loadModelConfigs(); // 保存后重新加载
@@ -69,7 +69,7 @@ async function saveOllamaConfig() {
       provider: 'ollama',
       config: {
         ...ollamaConfig.value,
-        endpoint: formatApiUrl(ollamaConfig.value.endpoint)
+        endpoint: formatapi_url(ollamaConfig.value.endpoint)
       }
     });
     await loadModelConfigs(); // 保存后重新加载
@@ -93,13 +93,13 @@ async function saveNewApiConfig() {
   try {
     await invoke('save_custom_config', { config: newApiConfig.value });
     await loadCustomConfigs();
-    newApiConfig.value = { name: '', apiUrl: '', model: '', sessionKey: '' };
+    newApiConfig.value = { name: '', api_url: '', model: '', sessionKey: '' };
   } catch (error) {
     console.error('保存API配置失败:', error);
   }
 }
 
-const formatApiUrl = (url: string) => {
+const formatapi_url = (url: string) => {
   if (!url) return '';
   if (url.endsWith('#')) {
     return url.slice(0, -1); // 移除#并保持原始地址
@@ -111,9 +111,9 @@ const formatApiUrl = (url: string) => {
   return url;
 };
 
-const handleApiUrlInput = (event: Event, config: any) => {
+const handleapi_urlInput = (event: Event, config: any) => {
   const input = (event.target as HTMLInputElement).value;
-  config.apiUrl = formatApiUrl(input);
+  config.api_url = formatapi_url(input);
 };
 </script>
 
@@ -151,8 +151,8 @@ const handleApiUrlInput = (event: Event, config: any) => {
                 <label>API 地址:</label>
                 <input 
                   type="text" 
-                  :value="openaiConfig.apiUrl"
-                  @input="(e) => handleApiUrlInput(e, openaiConfig)"
+                  :value="openaiConfig.api_url"
+                  @input="(e) => handleapi_urlInput(e, openaiConfig)"
                   placeholder="https://api.siliconflow.cn" 
                 />
                 <div class="input-tip">
@@ -179,7 +179,7 @@ const handleApiUrlInput = (event: Event, config: any) => {
                 <input 
                   type="text" 
                   :value="ollamaConfig.endpoint"
-                  @input="(e) => handleApiUrlInput(e, ollamaConfig)"
+                  @input="(e) => handleapi_urlInput(e, ollamaConfig)"
                   placeholder="https://api.siliconflow.cn" 
                 />
                 <div class="input-tip">
@@ -205,8 +205,8 @@ const handleApiUrlInput = (event: Event, config: any) => {
               <label>API 地址:</label>
               <input 
                 type="text" 
-                :value="newApiConfig.apiUrl"
-                @input="(e) => handleApiUrlInput(e, newApiConfig)"
+                :value="newApiConfig.api_url"
+                @input="(e) => handleapi_urlInput(e, newApiConfig)"
                 placeholder="https://api.siliconflow.cn" 
               />
               <div class="input-tip">
@@ -232,7 +232,7 @@ const handleApiUrlInput = (event: Event, config: any) => {
           <h3>{{ config?.name }}</h3>
           <div class="form-group">
             <label>API Key:</label>
-            <input type="password" :value="config?.api_key" readonly />
+            <input type="password" :value="config?.api_url" readonly />
           </div>
           <div class="form-group">
             <label>模型名称:</label>
