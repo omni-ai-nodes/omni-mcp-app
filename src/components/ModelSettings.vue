@@ -185,7 +185,7 @@ const handleapi_urlInput = (event: Event, config: any) => {
                 <label>API 地址:</label>
                 <input 
                   type="text" 
-                  :value="ollamaConfig.endpoint"
+                  :value="ollamaConfig.api_url"
                   @input="(e) => handleapi_urlInput(e, ollamaConfig)"
                   placeholder="https://api.siliconflow.cn" 
                 />
