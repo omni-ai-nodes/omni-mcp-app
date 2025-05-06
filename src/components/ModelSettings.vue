@@ -189,16 +189,23 @@ async function handleCustomConfigClick(config) {
   // 加载对应的配置数据
   try {
     const configData = await invoke('get_model_config', { provider: config.provider });
+    console.log('获取到的配置数据:', configData);
+    
     if (configData) {
-      // 创建一个新的配置对象，包含 provider 和配置数据
-      const updatedConfig = {
-        provider: config.provider,
-        ...configData
-      };
-      // 更新当前选中的配置数据
+      // 使用Vue的响应式API来更新数组
       const index = customConfigs.value.findIndex(c => c.provider === config.provider);
       if (index !== -1) {
-        customConfigs.value[index] = updatedConfig;
+        // 创建一个新的配置对象
+        const updatedConfig = {
+          provider: config.provider,
+          api_url: configData.api_url || '',
+          model: configData.model || '',
+          session_key: configData.session_key || '',
+          endpoint: configData.endpoint || ''
+        };
+        
+        // 使用数组方法触发响应式更新
+        customConfigs.value.splice(index, 1, updatedConfig);
       }
     }
   } catch (error) {
@@ -313,37 +320,38 @@ async function handleCustomConfigClick(config) {
           </form>
         </div>
 
-        <div v-for="config in customConfigs" 
-             :key="config?.provider || ''"
-             v-if="activeMenu === `api-${config?.provider}`"
-             class="config-section">
-          <h3>{{ config?.provider }}</h3>
-          <form @submit.prevent="updateCustomConfig(config)">
-            <div class="form-group">
-              <label>API 地址:</label>
-              <input 
-                type="text" 
-                v-model="config.api_url"
-                placeholder="https://api.siliconflow.cn" 
-              />
-              <div class="input-tip">
-                提示：/ 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
+        <!-- 修改自定义配置部分 -->
+        <template v-for="config in customConfigs" :key="config?.provider || ''">
+          <div v-if="activeMenu === `api-${config?.provider}`"
+               class="config-section">
+            <h3>{{ config?.provider }}</h3>
+            <form @submit.prevent="updateCustomConfig(config)">
+              <div class="form-group">
+                <label>API 地址:</label>
+                <input 
+                  type="text" 
+                  v-model="config.api_url"
+                  placeholder="https://api.siliconflow.cn" 
+                />
+                <div class="input-tip">
+                  提示：/ 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
+                </div>
               </div>
-            </div>
-            <div class="form-group">
-              <label>模型名称:</label>
-              <input type="text" v-model="config.model" />
-            </div>
-            <div class="form-group">
-              <label>Session Key:</label>
-              <input type="text" v-model="config.session_key" />
-            </div>
-            <div class="button-group">
-              <button type="submit">更新配置</button>
-              <button type="button" class="delete-btn" @click="deleteCustomConfig(config)">删除</button>
-            </div>
-          </form>
-        </div>
+              <div class="form-group">
+                <label>模型名称:</label>
+                <input type="text" v-model="config.model" />
+              </div>
+              <div class="form-group">
+                <label>Session Key:</label>
+                <input type="text" v-model="config.session_key" />
+              </div>
+              <div class="button-group">
+                <button type="submit">更新配置</button>
+                <button type="button" class="delete-btn" @click="deleteCustomConfig(config)">删除</button>
+              </div>
+            </form>
+          </div>
+        </template>
       </div>
     </div>
   </div>
