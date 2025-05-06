@@ -19,8 +19,10 @@ fn main() {
             tools::check_and_install_tools,
             commands::execute_command,
             open_github_link,
-            model_config::save_model_config,
             model_config::get_model_config,
+            model_config::save_model_config,
+            model_config::get_custom_configs,
+            model_config::delete_model_config,  // Add this line
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

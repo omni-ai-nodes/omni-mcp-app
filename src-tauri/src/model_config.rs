@@ -4,6 +4,7 @@ use dirs;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ModelConfig {
+    pub provider: String,  // 添加 provider 字段
     pub api_url: String,
     pub model: String,
     pub session_key: String,
@@ -138,6 +139,7 @@ pub async fn get_model_config(provider: String) -> Result<Option<ModelConfig>, S
                  api_url, model, session_key, endpoint);
         
         Ok(ModelConfig {
+            provider: provider.clone(), // Add this line to include the provider field
             api_url: api_url?,
             model: model?,
             session_key: session_key?,
@@ -190,6 +192,82 @@ pub async fn save_model_config(provider: String, config: ModelConfig) -> Result<
         },
         Err(e) => {
             let error_msg = format!("保存配置失败: {}", e);
+            println!("{}", error_msg);
+            Err(error_msg)
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn get_custom_configs() -> Result<Vec<ModelConfig>, String> {
+    let conn = match init_db() {
+        Ok(conn) => conn,
+        Err(e) => {
+            let error_msg = format!("初始化数据库失败: {}", e);
+            println!("{}", error_msg);
+            return Err(error_msg);
+        }
+    };
+    
+    let query = "SELECT provider, api_url, model, session_key, endpoint FROM model_configs WHERE provider != 'openai' AND provider != 'ollama'";
+    println!("执行查询: {}", query);
+    
+    let mut stmt = match conn.prepare(query) {
+        Ok(stmt) => stmt,
+        Err(e) => {
+            let error_msg = format!("准备查询语句失败: {}", e);
+            println!("{}", error_msg);
+            return Err(error_msg);
+        }
+    };
+    
+    let rows = stmt.query_map([], |row| {
+        let provider: String = row.get(0)?;
+        let api_url: String = row.get(1)?;
+        let model: String = row.get(2)?;
+        let session_key: String = row.get(3)?;
+        let endpoint: Option<String> = row.get(4)?;
+        
+        Ok(ModelConfig {
+            provider,  // 直接使用 provider
+            api_url,
+            model,
+            session_key,
+            endpoint,
+        })
+    }).map_err(|e| e.to_string())?;
+    
+    let mut configs = Vec::new();
+    for row in rows {  // Change to '_row' if you want to explicitly ignore it
+        if let Ok(config) = row {
+            configs.push(config);
+        }
+    }
+    
+    Ok(configs)
+}
+
+#[tauri::command]
+pub async fn delete_model_config(provider: String) -> Result<(), String> {
+    let conn = match init_db() {
+        Ok(conn) => conn,
+        Err(e) => {
+            let error_msg = format!("初始化数据库失败: {}", e);
+            println!("{}", error_msg);
+            return Err(error_msg);
+        }
+    };
+    
+    match conn.execute(
+        "DELETE FROM model_configs WHERE provider = ?",
+        [&provider],
+    ) {
+        Ok(_) => {
+            println!("删除配置成功: {}", provider);
+            Ok(())
+        },
+        Err(e) => {
+            let error_msg = format!("删除配置失败: {}", e);
             println!("{}", error_msg);
             Err(error_msg)
         }

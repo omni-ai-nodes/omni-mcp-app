@@ -19,7 +19,7 @@ const ollamaConfig = ref({
 });
 
 const newApiConfig = ref({
-  name: '',
+  name: '',  // 用于表单输入
   api_url: '',
   model: '',
   session_key: ''
@@ -87,19 +87,29 @@ async function saveOllamaConfig() {
 async function loadCustomConfigs() {
   try {
     const configs = await invoke('get_custom_configs');
-    console.log('Loaded configs:', configs); // Add this for debugging
+    console.log('Loaded custom configs:', configs);
     customConfigs.value = Array.isArray(configs) ? configs : [];
   } catch (error) {
-    console.error('加载API配置失败:', error);
+    console.error('加载自定义API配置失败:', error);
     customConfigs.value = [];
   }
 }
 
 async function saveNewApiConfig() {
   try {
+    if (!newApiConfig.value.name) {
+      alert('配置名称不能为空');
+      return;
+    }
+    
+    console.log('Saving new API config:', newApiConfig.value);
+    
+    // 保存配置名称以便后续使用
+    const configName = newApiConfig.value.name;
+    
     // 使用自定义名称作为provider
     await invoke('save_model_config', { 
-      provider: newApiConfig.value.name,
+      provider: configName,
       config: {
         api_url: formatapi_url(newApiConfig.value.api_url),
         model: newApiConfig.value.model,
@@ -107,10 +117,18 @@ async function saveNewApiConfig() {
         endpoint: ''
       }
     });
+    
+    // 保存成功后重新加载自定义配置
     await loadCustomConfigs();
+    
+    // 清空表单
     newApiConfig.value = { name: '', api_url: '', model: '', session_key: '' };
+    
+    // 切换到新添加的配置页面，使用保存的名称
+    activeMenu.value = `api-${configName}`;
   } catch (error) {
     console.error('保存API配置失败:', error);
+    alert(`保存失败: ${error}`);
   }
 }
 
@@ -130,6 +148,63 @@ const handleapi_urlInput = (event: Event, config: any) => {
   const input = (event.target as HTMLInputElement).value;
   config.api_url = formatapi_url(input);
 };
+
+async function updateCustomConfig(config) {
+  try {
+    console.log('Updating custom config:', config);
+    await invoke('save_model_config', { 
+      provider: config.provider,  // 使用 provider 而不是 name
+      config: {
+        api_url: formatapi_url(config.api_url),
+        model: config.model,
+        session_key: config.session_key,
+        endpoint: config.endpoint || ''
+      }
+    });
+    await loadCustomConfigs();
+    alert('配置已更新');
+  } catch (error) {
+    console.error('更新自定义配置失败:', error);
+    alert(`更新失败: ${error}`);
+  }
+}
+
+async function deleteCustomConfig(config) {
+  if (!confirm(`确定要删除 ${config.provider} 配置吗？`)) {  // 使用 provider 而不是 name
+    return;
+  }
+  
+  try {
+    await invoke('delete_model_config', { provider: config.provider });  // 使用 provider 而不是 name
+    await loadCustomConfigs();
+    activeMenu.value = 'openai';
+  } catch (error) {
+    console.error('删除自定义配置失败:', error);
+    alert(`删除失败: ${error}`);
+  }
+}
+
+async function handleCustomConfigClick(config) {
+  activeMenu.value = `api-${config.provider}`;
+  // 加载对应的配置数据
+  try {
+    const configData = await invoke('get_model_config', { provider: config.provider });
+    if (configData) {
+      // 创建一个新的配置对象，包含 provider 和配置数据
+      const updatedConfig = {
+        provider: config.provider,
+        ...configData
+      };
+      // 更新当前选中的配置数据
+      const index = customConfigs.value.findIndex(c => c.provider === config.provider);
+      if (index !== -1) {
+        customConfigs.value[index] = updatedConfig;
+      }
+    }
+  } catch (error) {
+    console.error('加载配置数据失败:', error);
+  }
+}
 </script>
 
 <template>
@@ -138,23 +213,21 @@ const handleapi_urlInput = (event: Event, config: any) => {
       <div class="settings-menu">
         <h3>模型配置</h3>
         <ul>
+          <li :class="{ active: activeMenu === 'newApi' }" @click="activeMenu = 'newApi'">
+            添加API配置
+          </li>
           <li :class="{ active: activeMenu === 'openai' }" @click="activeMenu = 'openai'">
             OpenAI配置
           </li>
           <li :class="{ active: activeMenu === 'ollama' }" @click="activeMenu = 'ollama'">
             Ollama配置
           </li>
-          <li :class="{ active: activeMenu === 'newApi' }" @click="activeMenu = 'newApi'">
-            添加API配置
+          <li v-for="config in customConfigs" 
+              :key="config?.provider || ''"
+              :class="{ active: activeMenu === `api-${config?.provider}` }"
+              @click="() => handleCustomConfigClick(config)">
+            {{ config?.provider }}
           </li>
-          <div class="submenu" v-if="customConfigs.length > 0">
-            <li v-for="config in customConfigs" 
-                :key="config?.name || ''"
-                :class="{ active: activeMenu === `api-${config?.name}` }"
-                @click="activeMenu = `api-${config?.name}`">
-              {{ config?.name }}
-            </li>
-          </div>
         </ul>
       </div>
 
@@ -241,22 +314,35 @@ const handleapi_urlInput = (event: Event, config: any) => {
         </div>
 
         <div v-for="config in customConfigs" 
-             :key="config?.name || ''"
-             v-if="activeMenu === `api-${config?.name}`"
+             :key="config?.provider || ''"
+             v-if="activeMenu === `api-${config?.provider}`"
              class="config-section">
-          <h3>{{ config?.name }}</h3>
-          <div class="form-group">
-            <label>API Key:</label>
-            <input type="password" :value="config?.api_url" readonly />
-          </div>
-          <div class="form-group">
-            <label>模型名称:</label>
-            <input type="text" :value="config?.model" readonly />
-          </div>
-          <div class="form-group">
-            <label>Session Key:</label>
-            <input type="text" :value="config?.session_key" readonly />
-          </div>
+          <h3>{{ config?.provider }}</h3>
+          <form @submit.prevent="updateCustomConfig(config)">
+            <div class="form-group">
+              <label>API 地址:</label>
+              <input 
+                type="text" 
+                v-model="config.api_url"
+                placeholder="https://api.siliconflow.cn" 
+              />
+              <div class="input-tip">
+                提示：/ 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
+              </div>
+            </div>
+            <div class="form-group">
+              <label>模型名称:</label>
+              <input type="text" v-model="config.model" />
+            </div>
+            <div class="form-group">
+              <label>Session Key:</label>
+              <input type="text" v-model="config.session_key" />
+            </div>
+            <div class="button-group">
+              <button type="submit">更新配置</button>
+              <button type="button" class="delete-btn" @click="deleteCustomConfig(config)">删除</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -369,6 +455,19 @@ button {
 
 button:hover {
   background-color: #3aa876;
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+}
+
+.delete-btn {
+  background-color: #e74c3c;
+}
+
+.delete-btn:hover {
+  background-color: #c0392b;
 }
 
 .input-tip {
