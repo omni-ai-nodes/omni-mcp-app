@@ -21,11 +21,24 @@ const conversations = ref<Conversation[]>([]);
 const currentConversation = ref<Conversation | null>(null);
 const newMessage = ref('');
 const loading = ref(false);
-const availableModels = ['openai', 'ollama'];
-const currentModel = ref('openai'); // 默认使用openai
+const availableModels = ref(['openai', 'ollama']); // 改为响应式数组
+const currentModel = ref('openai');
+
+// 加载自定义模型配置
+async function loadCustomConfigs() {
+  try {
+    const configs = await invoke('get_custom_configs');
+    const customModels = (configs as any[]).map(config => config.provider);
+    availableModels.value = ['openai', 'ollama', ...customModels];
+  } catch (error) {
+    console.error('加载自定义模型配置失败:', error);
+  }
+}
 
 // 从本地存储加载对话记录
-onMounted(() => {
+onMounted(async () => {
+  await loadCustomConfigs(); // 加载自定义模型配置
+  
   const savedConversations = localStorage.getItem('chatConversations');
   if (savedConversations) {
     conversations.value = JSON.parse(savedConversations);
