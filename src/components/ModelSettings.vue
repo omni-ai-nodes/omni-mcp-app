@@ -74,7 +74,6 @@ async function saveOllamaConfig() {
       config: {
         api_url: ollamaConfig.value.api_url,
         model: ollamaConfig.value.model,
-        session_key: ollamaConfig.value.session_key || '',
         session_key: ollamaConfig.value.session_key || '', // 添加这一行
         endpoint: formatapi_url(ollamaConfig.value.endpoint)
       }
@@ -98,7 +97,16 @@ async function loadCustomConfigs() {
 
 async function saveNewApiConfig() {
   try {
-    await invoke('save_custom_config', { config: newApiConfig.value });
+    // 使用自定义名称作为provider
+    await invoke('save_model_config', { 
+      provider: newApiConfig.value.name,
+      config: {
+        api_url: formatapi_url(newApiConfig.value.api_url),
+        model: newApiConfig.value.model,
+        session_key: newApiConfig.value.session_key,
+        endpoint: ''
+      }
+    });
     await loadCustomConfigs();
     newApiConfig.value = { name: '', api_url: '', model: '', session_key: '' };
   } catch (error) {
@@ -185,7 +193,7 @@ const handleapi_urlInput = (event: Event, config: any) => {
                 <label>API 地址:</label>
                 <input 
                   type="text" 
-                  :value="ollamaConfig.api_url"
+                  :value="ollamaConfig.endpoint"
                   @input="(e) => handleapi_urlInput(e, ollamaConfig)"
                   placeholder="https://api.siliconflow.cn" 
                 />
