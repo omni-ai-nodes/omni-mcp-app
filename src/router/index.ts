@@ -3,6 +3,7 @@ import GreeterChat from '../components/GreeterChat.vue'
 import MCPService from '../components/MCPService.vue'
 import Tools from '../components/ToolManager.vue'
 import ModelSettings from '../components/ModelSettings.vue'
+import ParsingMCPConfig from '../components/ParsingMCPConfig.vue'
 
 const routes = [
   {
@@ -28,6 +29,11 @@ const routes = [
     path: '/settings/model',
     name: 'ModelSettings',
     component: ModelSettings
+  },
+  {
+    path: '/parsingMCPConfig',
+    name: 'ParsingMCPConfig',
+    component: ParsingMCPConfig
   }
 ]
 

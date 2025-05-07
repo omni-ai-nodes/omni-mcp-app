@@ -5,6 +5,7 @@ const messages = {
     message: {
       chat: '聊天',
       mcpService: 'MCP服务安装',
+      parsingMCPConfigService: '解析MCP配置',
       toolManagement: '工具管理',
       settings: '设置',
       github: 'GitHub',

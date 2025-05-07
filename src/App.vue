@@ -107,6 +107,10 @@ function changeLanguage(event: Event) {
           <i class="icon server-icon"></i>
           <span>{{ $t('message.mcpService') }}</span>
         </router-link>
+        <router-link to="/parsingMCPConfig">
+          <i class="icon server-icon"></i>
+          <span>{{ $t('message.parsingMCPConfigService') }}</span>
+        </router-link>
         <router-link to="/tools">
           <i class="icon tools-icon"></i>
           <span>{{ $t('message.toolManagement') }}</span>
