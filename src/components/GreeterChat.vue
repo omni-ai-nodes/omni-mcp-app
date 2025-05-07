@@ -328,6 +328,59 @@ async function sendMessage() {
     saveConversations();
   }
 }
+
+// 用于跟踪哪些思考内容被展开
+const expandedThinks = ref<Set<string>>(new Set());
+
+// 检查消息内容是否包含 <think> 标签
+function hasThinkTag(content: string): boolean {
+  return content.includes('<think>') && content.includes('</think>');
+}
+
+// 格式化包含 <think> 标签的内容
+function formatThinkContent(content: string): string {
+  // 将消息内容分为 <think> 标签内外两部分
+  const thinkRegex = /<think>([\s\S]*?)<\/think>/g;
+  let formattedContent = content;
+  
+  // 替换所有 <think> 标签为可折叠的 HTML
+  formattedContent = formattedContent.replace(thinkRegex, '<div class="think-tag-content">$1</div>');
+  
+  return formattedContent;
+}
+
+// 切换思考内容的展开/折叠状态
+function toggleThink(messageId: string): void {
+  if (expandedThinks.value.has(messageId)) {
+    expandedThinks.value.delete(messageId);
+  } else {
+    expandedThinks.value.add(messageId);
+  }
+}
+
+// 检查特定消息的思考内容是否展开
+function isThinkExpanded(messageId: string): boolean {
+  return expandedThinks.value.has(messageId);
+}
+
+// 处理消息显示，将 <think> 标签内容替换为折叠区域
+function processMessageContent(msg: Message): { normalContent: string, thinkContent: string | null } {
+  if (!hasThinkTag(msg.content)) {
+    return { normalContent: msg.content, thinkContent: null };
+  }
+  
+  const thinkRegex = /<think>([\s\S]*?)<\/think>/;
+  const match = msg.content.match(thinkRegex);
+  
+  if (!match) {
+    return { normalContent: msg.content, thinkContent: null };
+  }
+  
+  const thinkContent = match[1].trim();
+  const normalContent = msg.content.replace(thinkRegex, '').trim();
+  
+  return { normalContent, thinkContent };
+}
 </script>
 
 <template>
@@ -375,7 +428,18 @@ async function sendMessage() {
           class="message"
           :class="msg.role"
         >
-          <div class="message-content">{{ msg.content }}</div>
+          <div class="message-content" v-if="!hasThinkTag(msg.content)">{{ msg.content }}</div>
+          <div class="message-content" v-else>
+            <div>{{ processMessageContent(msg).normalContent }}</div>
+            <div class="think-container">
+              <div class="think-header" @click="toggleThink(msg.id)">
+                思考过程 <span class="toggle-icon">{{ isThinkExpanded(msg.id) ? '▼' : '►' }}</span>
+              </div>
+              <div class="think-body" v-show="isThinkExpanded(msg.id)">
+                {{ processMessageContent(msg).thinkContent }}
+              </div>
+            </div>
+          </div>
           <div class="message-time">
             {{ new Date(msg.timestamp).toLocaleTimeString() }}
           </div>
@@ -630,6 +694,45 @@ textarea {
 
   .no-conversation {
     color: #999;
+  }
+}
+.think-container {
+  margin-top: 8px;
+  border-left: 3px solid #42b983;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.think-header {
+  padding: 8px;
+  background-color: rgba(66, 185, 131, 0.1);
+  cursor: pointer;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.think-body {
+  padding: 12px;
+  white-space: pre-wrap;
+  background-color: rgba(66, 185, 131, 0.05);
+  word-break: break-word;
+}
+
+.toggle-icon {
+  font-size: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  /* ... existing code ... */
+  
+  .think-header {
+    background-color: rgba(66, 185, 131, 0.2);
+  }
+  
+  .think-body {
+    background-color: rgba(66, 185, 131, 0.1);
   }
 }
 </style>
