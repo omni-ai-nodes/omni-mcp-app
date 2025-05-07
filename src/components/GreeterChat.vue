@@ -27,9 +27,9 @@ const currentModel = ref('openai');
 // 加载自定义模型配置
 async function loadCustomConfigs() {
   try {
-    const configs = await invoke('get_custom_configs');
+    const configs = await invoke('get_custom_configs', { filterType: 'ALL' });
     const customModels = (configs as any[]).map(config => config.provider);
-    availableModels.value = ['openai', 'ollama', ...customModels];
+    availableModels.value = [...customModels];
   } catch (error) {
     console.error('加载自定义模型配置失败:', error);
   }

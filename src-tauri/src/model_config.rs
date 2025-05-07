@@ -215,7 +215,7 @@ pub async fn save_model_config(provider: String, config: ModelConfig) -> Result<
 }
 
 #[tauri::command]
-pub async fn get_custom_configs() -> Result<Vec<ModelConfig>, String> {
+pub async fn get_custom_configs(filter_type: Option<String>) -> Result<Vec<ModelConfig>, String> {
     let conn = match init_db() {
         Ok(conn) => conn,
         Err(e) => {
@@ -225,7 +225,16 @@ pub async fn get_custom_configs() -> Result<Vec<ModelConfig>, String> {
         }
     };
     
-    let query = "SELECT provider, api_url, model, session_key, endpoint FROM model_configs WHERE provider != 'openai' AND provider != 'ollama'";
+    // 根据 filter_type 参数决定是否添加 WHERE 条件
+    let query = match filter_type {
+        Some(filter) if filter == "ALL" => {
+            "SELECT provider, api_url, model, session_key, endpoint FROM model_configs"
+        },
+        _ => {
+            "SELECT provider, api_url, model, session_key, endpoint FROM model_configs WHERE provider != 'openai' AND provider != 'ollama'"
+        }
+    };
+    
     println!("执行查询: {}", query);
     
     let mut stmt = match conn.prepare(query) {
