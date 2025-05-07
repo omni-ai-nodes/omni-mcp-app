@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 
 interface Message {
@@ -17,23 +17,46 @@ interface Conversation {
   model: string; // 添加模型类型字段
 }
 
+interface ModelConfig {
+  provider: string;
+  api_url: string;
+  model: string;
+  session_key: string;
+  endpoint?: string;
+}
+
 const conversations = ref<Conversation[]>([]);
 const currentConversation = ref<Conversation | null>(null);
 const newMessage = ref('');
 const loading = ref(false);
 const availableModels = ref(['openai', 'ollama']); // 改为响应式数组
 const currentModel = ref('openai');
+const modelConfigs = ref<Record<string, ModelConfig>>({});
+const streamingContent = ref('');
+const eventSource = ref<EventSource | null>(null);
 
 // 加载自定义模型配置
 async function loadCustomConfigs() {
   try {
-    const configs = await invoke('get_custom_configs', { filterType: 'ALL' });
-    const customModels = (configs as any[]).map(config => config.provider);
+    const configs = await invoke('get_custom_configs', { filterType: 'ALL' }) as ModelConfig[];
+    const customModels = configs.map(config => config.provider);
     availableModels.value = [...customModels];
+    
+    // 将配置保存到 modelConfigs 对象中
+    configs.forEach(config => {
+      modelConfigs.value[config.provider] = config;
+    });
+    
+    console.log('加载的模型配置:', modelConfigs.value);
   } catch (error) {
     console.error('加载自定义模型配置失败:', error);
   }
 }
+
+// 获取当前模型的配置
+const currentModelConfig = computed(() => {
+  return modelConfigs.value[currentModel.value] || null;
+});
 
 // 从本地存储加载对话记录
 onMounted(async () => {
@@ -97,9 +120,21 @@ function changeModel(model: string) {
   }
 }
 
-// 发送消息
+// 关闭 SSE 连接
+function closeEventSource() {
+  if (eventSource.value) {
+    eventSource.value.close();
+    eventSource.value = null;
+  }
+}
+
+// 使用 SSE 发送消息
 async function sendMessage() {
   if (!newMessage.value.trim() || !currentConversation.value || loading.value) return;
+  if (!currentModelConfig.value) {
+    console.error('当前模型配置不存在');
+    return;
+  }
   
   const userMessage: Message = {
     id: Date.now().toString(),
@@ -111,21 +146,183 @@ async function sendMessage() {
   currentConversation.value.messages.push(userMessage);
   newMessage.value = '';
   loading.value = true;
+  streamingContent.value = '';
   
   try {
-    const response = await invoke('chat_with_model', { 
-      message: userMessage.content,
-      model: currentConversation.value.model
-    });
+    // 关闭之前的连接
+    closeEventSource();
+    
+    const config = currentModelConfig.value;
+    const modelName = config.model;
+    const apiUrl = config.api_url;
+    const sessionKey = config.session_key;
+    
+    // 创建一个临时的消息对象用于流式显示
     const assistantMessage: Message = {
       id: (Date.now() + 1).toString(),
-      content: response as string,
+      content: '',
       role: 'assistant',
       timestamp: Date.now()
     };
     currentConversation.value.messages.push(assistantMessage);
+    
+    // 根据模型类型选择不同的 API 端点
+    let sseUrl = '';
+    let headers = new Headers();
+    let body = null;
+    
+    if (currentModel.value === 'openai') {
+      sseUrl = `${apiUrl}/v1/chat/completions`;
+      headers.append('Content-Type', 'application/json');
+      headers.append('Authorization', `Bearer ${sessionKey}`);
+      
+      body = JSON.stringify({
+        model: modelName,
+        messages: [
+          { role: 'user', content: userMessage.content }
+        ],
+        stream: true
+      });
+    } else if (currentModel.value === 'ollama') {
+      sseUrl = `${apiUrl}`;
+      headers.append('Content-Type', 'application/json');
+      
+      body = JSON.stringify({
+        model: modelName,
+        messages: [
+          { role: 'user', content: userMessage.content }
+        ],
+        stream: true
+      });
+    } else {
+      // 自定义模型，使用通用格式
+      sseUrl = `${apiUrl}`;
+      headers.append('Content-Type', 'application/json');
+      if (sessionKey) {
+        headers.append('Authorization', `Bearer ${sessionKey}`);
+      }
+      
+      body = JSON.stringify({
+        model: modelName,
+        messages: [
+          { role: 'user', content: userMessage.content }
+        ],
+        stream: true
+      });
+    }
+    
+    // 使用 fetch 创建 SSE 连接
+    const response = await fetch(sseUrl, {
+      method: 'POST',
+      headers: headers,
+      body: body
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('无法获取响应流');
+    }
+    
+    // 处理流式响应
+    const decoder = new TextDecoder();
+    let buffer = '';
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      
+      // 处理接收到的数据
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      
+      for (const line of lines) {
+        // 检查是否是结束标记
+        if (line === 'data: [DONE]') {
+          console.log('收到 SSE 结束标记');
+          break; // 结束处理循环
+        }
+        
+        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+          try {
+            console.log('收到 SSE 数据:', line);
+            const data = JSON.parse(line.substring(6));
+            let content = '';
+            
+            // 记录解析后的数据结构
+            console.log('解析后的数据:', JSON.stringify(data));
+            if (currentModel.value === 'openai') {
+              // OpenAI 格式
+              if (data.choices && data.choices[0].delta && data.choices[0].delta.content) {
+                content = data.choices[0].delta.content;
+              }
+              // 检查是否结束
+              if (data.choices && data.choices[0].finish_reason === 'stop') {
+                console.log('OpenAI 响应结束');
+              }
+            } else if (currentModel.value === 'ollama') {
+              // Ollama 格式 - 实际上与 OpenAI 格式相同
+              if (data.choices && data.choices[0].delta && data.choices[0].delta.content) {
+                content = data.choices[0].delta.content;
+              }
+              // 检查是否结束
+              if (data.choices && data.choices[0].finish_reason === 'stop') {
+                console.log('Ollama 响应结束');
+              }
+            } else {
+              // 通用格式，尝试提取内容
+              content = data.content || data.text || 
+                       (data.choices && data.choices[0] && 
+                        (data.choices[0].delta?.content || data.choices[0].text)) || '';
+            }
+            
+            if (content) {
+              assistantMessage.content += content;
+              // 更新消息内容
+              const index = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id);
+              if (index !== -1) {
+                currentConversation.value.messages[index] = { ...assistantMessage };
+              }
+            }
+          } catch (e) {
+            console.error('解析 SSE 数据失败:', e, line);
+          }
+        }
+      }
+    }
   } catch (error) {
     console.error('发送消息失败:', error);
+    // 如果 SSE 失败，回退到普通的 API 调用
+    try {
+      const response = await invoke('chat_with_model', { 
+        message: userMessage.content,
+        model: currentConversation.value.model
+      });
+      
+      // 更新最后一条消息的内容
+      if (currentConversation.value.messages.length > 0) {
+        const lastMessage = currentConversation.value.messages[currentConversation.value.messages.length - 1];
+        if (lastMessage.role === 'assistant') {
+          lastMessage.content = response as string;
+        } else {
+          // 如果最后一条不是助手消息，则添加新消息
+          const assistantMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            content: response as string,
+            role: 'assistant',
+            timestamp: Date.now()
+          };
+          currentConversation.value.messages.push(assistantMessage);
+        }
+      }
+    } catch (fallbackError) {
+      console.error('回退到普通 API 调用也失败:', fallbackError);
+    }
   } finally {
     loading.value = false;
     saveConversations();
