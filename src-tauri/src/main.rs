@@ -18,6 +18,7 @@ fn main() {
             tools::install_single_tool,
             tools::check_and_install_tools,
             commands::execute_command,
+            commands::parse_mcp_config,
             open_github_link,
             model_config::get_model_config,
             model_config::save_model_config,
