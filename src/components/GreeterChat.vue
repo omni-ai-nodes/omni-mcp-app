@@ -705,13 +705,15 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
 }
 
 .model-selector {
-  padding: 12px 16px;
-  border-bottom: 1px solid #e0e0e0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-  background-color: #f8f8f8;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  transition: background-color 0.3s ease;
 }
 
 .model-selector select {
@@ -736,6 +738,36 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
   flex-wrap: wrap;
 }
 
+.message-content {
+  padding: 12px 16px;
+  border-radius: 12px;
+  background-color: var(--message-bg);
+  color: var(--text-color);
+  line-height: 1.6;
+  max-width: 85%;
+  box-shadow: 0 2px 4px var(--shadow-color);
+  
+  &.user {
+    --message-bg: var(--user-bg);
+    align-self: flex-end;
+  }
+  
+  &.assistant {
+    --message-bg: var(--assistant-bg);
+    align-self: flex-start;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-color: #2d2d2d;
+    --border-color: #404040;
+    --text-color: #e0e0e0;
+    --user-bg: #3a5ab3;
+    --assistant-bg: #333333;
+    --shadow-color: rgba(0,0,0,0.2);
+  }
+}
 .model-option-item {
   display: flex;
   align-items: center;
@@ -744,7 +776,6 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
   border: 1px solid #e0e0e0;
   border-radius: 4px;
   cursor: pointer;
-  background-color: white;
   transition: all 0.2s;
 }
 
@@ -790,27 +821,6 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
   align-items: flex-start;
 }
 
-.message-content {
-  padding: 12px 16px;
-  border-radius: 12px;
-  background-color: #f0f0f0;
-  line-height: 1.4;
-  white-space: pre-wrap;
-  word-break: break-word;
-  display: inline-block;
-  max-width: 100%;
-  min-width: 60px;  /* 添加最小宽度 */
-}
-
-.message.user .message-content {
-  background-color: #42b983;
-  color: white;
-  text-align: right;
-}
-
-.message.assistant .message-content {
-  text-align: left;
-}
 
 .message-time {
   font-size: 12px;
@@ -993,15 +1003,12 @@ textarea {
   font-family: monospace;
 }
   
-.message-content {
-  padding: 12px 16px;
-  border-radius: 12px;
-  background-color: #f0f0f0;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
+/* 暗色模式适配 */
+@media (prefers-color-scheme: dark) {
+ .math-formula {
+    background-color: rgba(66, 185, 131, 0.1);
+  }
 }
-
 /* 添加数学公式样式 */
 .math-block {
   margin: 1em 0;
