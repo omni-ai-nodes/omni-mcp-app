@@ -105,7 +105,7 @@ function saveConversations() {
 function createNewConversation() {
   const newConv: Conversation = {
     id: Date.now().toString(),
-    title: `新对话 ${conversations.value.length + 1}`,
+    title: '新对话',  // 先设置一个默认标题
     messages: [],
     timestamp: Date.now(),
     model: currentModel.value
@@ -182,6 +182,16 @@ async function sendMessage() {
     role: 'user',
     timestamp: Date.now()
   };
+  
+  // 如果是对话的第一条消息，则更新对话标题
+  if (currentConversation.value.messages.length === 0) {
+    // 获取用户消息的前20个字符作为标题，如果超过17个字符则添加省略号
+    let title = userMessage.content.trim();
+    if (title.length > 17) {
+      title = title.substring(0, 17) + '...';
+    }
+    currentConversation.value.title = title;
+  }
   
   currentConversation.value.messages.push(userMessage);
   newMessage.value = '';
@@ -698,7 +708,7 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
   gap: 8px;
   flex-wrap: wrap;
 }
-
+  
 .model-options-list {
   display: flex;
   gap: 8px;
