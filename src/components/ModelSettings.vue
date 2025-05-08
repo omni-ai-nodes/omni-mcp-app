@@ -220,7 +220,7 @@ async function handleCustomConfigClick(config) {
 }
 
 // 获取模型列表
-async function fetchModels(apiUrl: string) {
+async function fetchModels(apiUrl: string, sessionKey?: string) {
   try {
     if (!apiUrl) {
       alert('请先输入API地址');
@@ -233,7 +233,19 @@ async function fetchModels(apiUrl: string) {
     
     console.log('请求模型列表URL:', modelsUrl);
     
-    const response = await fetch(modelsUrl);
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+
+    // 如果提供了 session_key，添加到请求头
+    if (sessionKey) {
+      headers['Authorization'] = `Bearer ${sessionKey}`;
+    }
+    
+    const response = await fetch(modelsUrl, {
+      headers
+    });
+    
     if (!response.ok) {
       throw new Error(`请求失败: ${response.status} ${response.statusText}`);
     }
@@ -268,12 +280,10 @@ async function fetchOpenAIModels() {
   }
   
   try {
-    const models = await fetchModels(openaiConfig.value.api_url);
+    const models = await fetchModels(openaiConfig.value.api_url, openaiConfig.value.session_key);
     console.log('获取到的OpenAI模型列表:', models);
     
     if (models) {
-      // const firstModel = models.split(',')[0];
-      // console.log('选择第一个模型:', firstModel);
       openaiConfig.value.model = models;
     } else {
       console.error('未获取到有效的模型列表');
@@ -286,19 +296,19 @@ async function fetchOpenAIModels() {
 
 // 为Ollama配置获取模型
 async function fetchOllamaModels() {
-  const models = await fetchModels(ollamaConfig.value.api_url);
+  const models = await fetchModels(ollamaConfig.value.api_url, ollamaConfig.value.session_key);
   if (models) {
-    ollamaConfig.value.model = models; // 默认选择第一个模型
-  }else {
-      console.error('未获取到有效的模型列表');
+    ollamaConfig.value.model = models;
+  } else {
+    console.error('未获取到有效的模型列表');
   }
 }
 
 // 为自定义配置获取模型
 async function fetchCustomModels(config) {
-  const models = await fetchModels(config.api_url);
+  const models = await fetchModels(config.api_url, config.session_key);
   if (models) {
-    config.model = models; // 默认选择第一个模型
+    config.model = models;
   }
 }
 </script>
