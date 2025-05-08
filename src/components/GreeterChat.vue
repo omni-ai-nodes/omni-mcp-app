@@ -685,14 +685,18 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
 .message {
   margin: 12px 0;
   max-width: 80%;
+  display: flex;
+  flex-direction: column;
 }
 
 .message.user {
   margin-left: auto;
+  align-items: flex-end;
 }
 
 .message.assistant {
   margin-right: auto;
+  align-items: flex-start;
 }
 
 .message-content {
@@ -700,11 +704,20 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
   border-radius: 12px;
   background-color: #f0f0f0;
   line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: inline-block;  /* 添加这行 */
+  max-width: 100%;       /* 添加这行 */
 }
 
 .message.user .message-content {
   background-color: #42b983;
   color: white;
+  text-align: right;
+}
+
+.message.assistant .message-content {
+  text-align: left;
 }
 
 .message-time {
