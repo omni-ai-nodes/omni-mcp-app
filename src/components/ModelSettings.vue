@@ -9,20 +9,22 @@ const openaiConfig = ref({
   api_url: '',
   model: '',
   session_key: '',
-  endpoint: ''
+  method: '/v1/chat/completions'  // 添加默认值
 });
 
 const ollamaConfig = ref({
   api_url: '',
-  endpoint: '',
-  model: ''
+  model: '',
+  session_key: '',
+  method: '/v1/chat/completions'  // 添加默认值
 });
 
 const newApiConfig = ref({
-  name: '',  // 用于表单输入
+  name: '',
   api_url: '',
   model: '',
-  session_key: ''
+  session_key: '',
+  method: '/v1/chat/completions'  // 添加默认值
 });
 
 onMounted(async () => {
@@ -204,7 +206,8 @@ async function handleCustomConfigClick(config) {
           api_url: configData.api_url || '',
           model: configData.model || '',
           session_key: configData.session_key || '',
-          endpoint: configData.endpoint || ''
+          endpoint: configData.endpoint || '',
+          method: configData.method || '/v1/chat/completions'  // 添加 method 字段
         };
         
         // 使用数组方法触发响应式更新
@@ -213,6 +216,90 @@ async function handleCustomConfigClick(config) {
     }
   } catch (error) {
     console.error('加载配置数据失败:', error);
+  }
+}
+
+// 获取模型列表
+async function fetchModels(apiUrl: string) {
+  try {
+    if (!apiUrl) {
+      alert('请先输入API地址');
+      return;
+    }
+    
+    // 确保API地址不以/结尾
+    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    const modelsUrl = `${baseUrl}/v1/models`;
+    
+    console.log('请求模型列表URL:', modelsUrl);
+    
+    const response = await fetch(modelsUrl);
+    if (!response.ok) {
+      throw new Error(`请求失败: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('获取到的模型列表数据:', data);
+    
+    if (data && data.object === 'list' && Array.isArray(data.data)) {
+      // 提取模型ID并返回数组
+      const modelIds = data.data.map(model => model.id);
+      console.log('提取的模型ID列表:', modelIds);
+      return modelIds;
+    } else {
+      throw new Error('无效的模型数据格式');
+    }
+  } catch (error) {
+    console.error('获取模型列表失败:', error);
+    alert(`获取模型列表失败: ${error}`);
+    return null;
+  }
+}
+
+// 为OpenAI配置获取模型
+async function fetchOpenAIModels() {
+  console.log('开始获取OpenAI模型列表...');
+  console.log('当前API地址:', openaiConfig.value.api_url);
+  
+  if (!openaiConfig.value.api_url) {
+    console.error('API地址为空，无法获取模型列表');
+    alert('请先输入API地址');
+    return;
+  }
+  
+  try {
+    const models = await fetchModels(openaiConfig.value.api_url);
+    console.log('获取到的OpenAI模型列表:', models);
+    
+    if (models && models.length > 0) {
+      // 存储完整的模型列表
+      openaiConfig.value.availableModels = models;
+      // 默认选择第一个模型
+      openaiConfig.value.model = models[0];
+    } else {
+      console.error('未获取到有效的模型列表');
+    }
+  } catch (error) {
+    console.error('获取OpenAI模型列表出错:', error);
+    alert(`获取模型列表失败: ${error}`);
+  }
+}
+
+// 为Ollama配置获取模型
+async function fetchOllamaModels() {
+  const models = await fetchModels(ollamaConfig.value.api_url);
+  if (models && models.length > 0) {
+    ollamaConfig.value.availableModels = models;
+    ollamaConfig.value.model = models[0]; // 默认选择第一个模型
+  }
+}
+
+// 为自定义配置获取模型
+async function fetchCustomModels(config) {
+  const models = await fetchModels(config.api_url);
+  if (models && models.length > 0) {
+    config.availableModels = models;
+    config.model = models[0]; // 默认选择第一个模型
   }
 }
 </script>
@@ -249,14 +336,22 @@ async function handleCustomConfigClick(config) {
                 <label>API 地址:</label>
                 <input 
                   type="text" 
-                  :value="openaiConfig.api_url"
-                  @input="(e) => handleapi_urlInput(e, openaiConfig)"
+                  v-model="openaiConfig.api_url"
                   placeholder="https://api.siliconflow.cn" 
                 />
-                <div class="input-tip">
-                  提示：/v 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
+            </div>
+            <div class="form-group">
+              <label>API 方法:</label>
+              <input 
+                type="text" 
+                v-model="openaiConfig.method"
+                placeholder="/v1/chat/completions" 
+              />
+              <div class="input-tip">
+                  提示: API 结尾自动补全 /v1/chat/completions
                 </div>
-              </div>
+                <button type="button" class="fetch-btn" @click="fetchOpenAIModels">获取模型列表</button>
+            </div>
             <div class="form-group">
               <label>模型名称:</label>
               <input type="text" v-model="openaiConfig.model" />
@@ -276,14 +371,22 @@ async function handleCustomConfigClick(config) {
                 <label>API 地址:</label>
                 <input 
                   type="text" 
-                  :value="ollamaConfig.api_url"
-                  @input="(e) => handleapi_urlInput(e, ollamaConfig)"
+                  v-model="ollamaConfig.api_url"
                   placeholder="https://api.siliconflow.cn" 
                 />
-                <div class="input-tip">
-                  提示：/v 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
+            </div>
+            <div class="form-group">
+              <label>API 方法:</label>
+              <input 
+                type="text" 
+                v-model="ollamaConfig.method"
+                placeholder="/v1/chat/completions" 
+              />
+              <div class="input-tip">
+                提示: API 结尾自动补全 /v1/chat/completions
                 </div>
-              </div>
+                <button type="button" class="fetch-btn" @click="fetchOllamaModels">获取模型列表</button>
+            </div>
             <div class="form-group">
               <label>模型名称:</label>
               <input type="text" v-model="ollamaConfig.model" />
@@ -303,17 +406,29 @@ async function handleCustomConfigClick(config) {
               <label>API 地址:</label>
               <input 
                 type="text" 
-                :value="newApiConfig.api_url"
-                @input="(e) => handleapi_urlInput(e, newApiConfig)"
+                v-model="newApiConfig.api_url"
                 placeholder="https://api.siliconflow.cn" 
               />
+            </div>
+            <div class="form-group">
+              <label>API 方法:</label>
+              <input 
+                type="text" 
+                v-model="ollamaConfig.method"
+                placeholder="/v1/chat/completions" 
+              />
               <div class="input-tip">
-                提示：/v 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
+                提示: API 结尾自动补全 /v1/chat/completions
               </div>
+              <button type="button" class="fetch-btn" @click="async () => {
+                const models = await fetchModels(newApiConfig.api_url);
+                if (models) newApiConfig.model = models.split(',')[0];
+              }">获取模型列表</button>
             </div>
             <div class="form-group">
               <label>模型名称:</label>
               <input type="text" v-model="newApiConfig.model" />
+             
             </div>
             <div class="form-group">
               <label>Session Key:</label>
@@ -339,6 +454,7 @@ async function handleCustomConfigClick(config) {
                 <div class="input-tip">
                   提示：/ 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
                 </div>
+                <button type="button" class="fetch-btn" @click="() => fetchCustomModels(config)">获取模型列表</button>
               </div>
               <div class="form-group">
                 <label>模型名称:</label>
@@ -512,5 +628,16 @@ button:hover {
   .input-tip {
     color: rgba(255, 255, 255, 0.5);
   }
+}
+
+.fetch-btn {
+  margin-top: 8px;
+  background-color: #4a6bdf;
+  padding: 6px 12px;
+  font-size: 0.9em;
+}
+
+.fetch-btn:hover {
+  background-color: #3a5bcf;
 }
 </style>

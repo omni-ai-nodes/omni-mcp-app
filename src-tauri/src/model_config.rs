@@ -9,6 +9,7 @@ pub struct ModelConfig {
     pub model: String,
     pub session_key: String,
     pub endpoint: Option<String>,
+    pub method: Option<String>,  // 添加 method 字段
 }
 
 // 检查列是否存在的函数
@@ -86,6 +87,17 @@ pub fn init_db() -> Result<Connection> {
                 Err(e) => println!("添加endpoint列失败: {}", e),
             }
         }
+        
+        // 检查 method 列是否存在
+        let method_exists = column_exists(&conn, "model_configs", "method");
+        println!("method列是否存在: {}", method_exists);
+        
+        if !method_exists {
+            match conn.execute("ALTER TABLE model_configs ADD COLUMN method TEXT", []) {
+                Ok(_) => println!("成功添加method列"),
+                Err(e) => println!("添加method列失败: {}", e),
+            }
+        }
     } else {
         // 创建新表
         match conn.execute(
@@ -94,7 +106,8 @@ pub fn init_db() -> Result<Connection> {
                 api_url TEXT,
                 model TEXT,
                 session_key TEXT,
-                endpoint TEXT
+                endpoint TEXT,
+                method TEXT
             )",
             [],
         ) {
@@ -117,7 +130,7 @@ pub async fn get_model_config(provider: String) -> Result<Option<ModelConfig>, S
         }
     };
     
-    let query = format!("SELECT api_url, model, session_key, endpoint FROM model_configs WHERE provider = '{}'", provider);
+    let query = format!("SELECT api_url, model, session_key, endpoint, method FROM model_configs WHERE provider = '{}'", provider);
     println!("执行查询: {}", query);
     
     let mut stmt = match conn.prepare(&query) {
@@ -134,16 +147,18 @@ pub async fn get_model_config(provider: String) -> Result<Option<ModelConfig>, S
         let model: Result<String> = row.get(1);
         let session_key: Result<String> = row.get(2);
         let endpoint: Result<Option<String>> = row.get(3);
+        let method: Result<Option<String>> = row.get(4);
         
-        println!("查询结果: api_url={:?}, model={:?}, session_key={:?}, endpoint={:?}", 
-                 api_url, model, session_key, endpoint);
+        println!("查询结果: api_url={:?}, model={:?}, session_key={:?}, endpoint={:?}, method={:?}", 
+                 api_url, model, session_key, endpoint, method);
         
         Ok(ModelConfig {
-            provider: provider.clone(), // Add this line to include the provider field
+            provider: provider.clone(),
             api_url: api_url?,
             model: model?,
             session_key: session_key?,
             endpoint: endpoint?,
+            method: method?,
         })
     }).ok();
     
@@ -172,17 +187,19 @@ pub async fn save_model_config(provider: String, config: ModelConfig) -> Result<
 
     // Use as_ref() to borrow the Option's contents instead of moving it
     let endpoint_value = config.endpoint.as_ref().map_or_else(String::new, |s| s.clone());
+    let method_value = config.method.as_ref().map_or_else(|| "/v1/chat/completions".to_string(), |s| s.clone());
     
     let result = if exists {
         // 如果存在，执行更新操作
         println!("更新已存在的配置: {}", provider);
         conn.execute(
-            "UPDATE model_configs SET api_url = ?1, model = ?2, session_key = ?3, endpoint = ?4 WHERE provider = ?5",
+            "UPDATE model_configs SET api_url = ?1, model = ?2, session_key = ?3, endpoint = ?4, method = ?5 WHERE provider = ?6",
             [
                 &config.api_url,
                 &config.model,
                 &config.session_key,
                 &endpoint_value,
+                &method_value,
                 &provider,
             ],
         )
@@ -190,13 +207,14 @@ pub async fn save_model_config(provider: String, config: ModelConfig) -> Result<
         // 如果不存在，执行插入操作
         println!("插入新配置: {}", provider);
         conn.execute(
-            "INSERT INTO model_configs (provider, api_url, model, session_key, endpoint) VALUES (?1, ?2, ?3, ?4, ?5)",
+            "INSERT INTO model_configs (provider, api_url, model, session_key, endpoint, method) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             [
                 &provider,
                 &config.api_url,
                 &config.model,
                 &config.session_key,
                 &endpoint_value,
+                &method_value,
             ],
         )
     };
@@ -228,10 +246,10 @@ pub async fn get_custom_configs(filter_type: Option<String>) -> Result<Vec<Model
     // 根据 filter_type 参数决定是否添加 WHERE 条件
     let query = match filter_type {
         Some(filter) if filter == "ALL" => {
-            "SELECT provider, api_url, model, session_key, endpoint FROM model_configs"
+            "SELECT provider, api_url, model, session_key, endpoint, method FROM model_configs"
         },
         _ => {
-            "SELECT provider, api_url, model, session_key, endpoint FROM model_configs WHERE provider != 'openai' AND provider != 'ollama'"
+            "SELECT provider, api_url, model, session_key, endpoint, method FROM model_configs WHERE provider != 'openai' AND provider != 'ollama'"
         }
     };
     
@@ -252,13 +270,15 @@ pub async fn get_custom_configs(filter_type: Option<String>) -> Result<Vec<Model
         let model: String = row.get(2)?;
         let session_key: String = row.get(3)?;
         let endpoint: Option<String> = row.get(4)?;
+        let method: Option<String> = row.get(5)?;
         
         Ok(ModelConfig {
-            provider,  // 直接使用 provider
+            provider,
             api_url,
             model,
             session_key,
             endpoint,
+            method,
         })
     }).map_err(|e| e.to_string())?;
     
