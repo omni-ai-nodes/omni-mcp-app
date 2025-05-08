@@ -1,7 +1,6 @@
 use std::process::Command;
 use std::io::{self, Write};
 use log::{info, error};
-use serde_json::{Value, json};
 
 #[tauri::command]
 pub fn execute_command(cmd: &str, args: Vec<String>) -> Result<String, String> {
@@ -87,26 +86,5 @@ pub fn execute_command(cmd: &str, args: Vec<String>) -> Result<String, String> {
             error!("{}", err_msg);
             Err(err_msg)
         }
-    }
-}
-
-
-#[tauri::command]
-pub fn parse_mcp_config(config: &str) -> Result<String, String> {
-    // 首先尝试解析 JSON
-    let parsed_result: Result<Value, serde_json::Error> = serde_json::from_str(config);
-    println!("1111");
-    match parsed_result {
-        Ok(json_value) => {
-            // 这里可以添加更多的验证逻辑
-            // 例如检查必要的字段是否存在，格式是否正确等
-            
-            // 为了演示，我们先简单地返回格式化后的 JSON
-            match serde_json::to_string_pretty(&json_value) {
-                Ok(formatted) => Ok(formatted),
-                Err(e) => Err(format!("格式化 JSON 失败: {}", e))
-            }
-        },
-        Err(e) => Err(format!("JSON 解析失败: {}", e))
     }
 }

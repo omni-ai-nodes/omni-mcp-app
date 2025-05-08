@@ -27,9 +27,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             commands::execute_command,
-            commands::parse_mcp_config,
             tools::install_single_tool,
-            tools::check_tools_status
+            tools::check_tools_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -7,6 +7,7 @@ mod github_handler;
 
 use github_handler::open_github_link;
 mod model_config;
+mod save_mcp_config;
 
 // Remove this unused import
 // use crate::db::ModelConfig;
@@ -19,12 +20,12 @@ fn main() {
             tools::install_single_tool,
             tools::check_and_install_tools,
             commands::execute_command,
-            commands::parse_mcp_config,
             open_github_link,
             model_config::get_model_config,
             model_config::save_model_config,
             model_config::get_custom_configs,
             model_config::delete_model_config,  // Add this line
+            save_mcp_config::parse_mcp_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
