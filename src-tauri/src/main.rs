@@ -13,6 +13,7 @@ mod model_config;
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             tools::check_tools_status,
             tools::install_single_tool,

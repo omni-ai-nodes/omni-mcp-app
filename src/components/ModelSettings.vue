@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { invoke } from "@tauri-apps/api/core";
+import { confirm } from '@tauri-apps/plugin-dialog';
 
 const activeMenu = ref('openai');
 const customConfigs = ref([]);
@@ -175,14 +176,35 @@ async function updateCustomConfig(config) {
 }
 
 async function deleteCustomConfig(config) {
-  if (!confirm(`确定要删除 ${config.provider} 配置吗？`)) {  // 使用 provider 而不是 name
+  console.log('确认对话框即将弹出');
+  console.log('当前浏览器设置:', window.navigator.userAgent);
+  console.log('confirm函数存在:', typeof confirm === 'function');
+  const confirmed2 = await confirm(`确定要删除 ${config.provider} 配置吗？`, { title: '删除', kind: '取消' });
+  // const yes2 = await ask('This action cannot be reverted. Are you sure?', { title: 'Tauri', kind: 'warning' });
+
+  if (!confirmed2) {
+    console.log('用户取消了删除操作');
     return;
   }
   
   try {
-    await invoke('delete_model_config', { provider: config.provider });  // 使用 provider 而不是 name
+    console.log('调用Rust删除接口');
+    await invoke('delete_model_config', { provider: config.provider });
+    console.log('重新加载配置');
     await loadCustomConfigs();
+    
+    // 强制切换到默认菜单并触发视图更新
     activeMenu.value = 'openai';
+    
+    // 确保自定义配置列表更新
+    customConfigs.value = customConfigs.value.filter(c => c.provider !== config.provider);
+    
+    // 如果当前活动菜单是被删除的配置，强制刷新视图
+    if (activeMenu.value === `api-${config.provider}`) {
+      activeMenu.value = 'openai';
+    }
+    
+    alert(`配置 ${config.provider} 已删除`);
   } catch (error) {
     console.error('删除自定义配置失败:', error);
     alert(`删除失败: ${error}`);
@@ -475,7 +497,7 @@ async function fetchCustomModels(config) {
               </div>
               <div class="button-group">
                 <button type="submit">更新配置</button>
-                <button type="button" class="delete-btn" @click="deleteCustomConfig(config)">删除</button>
+                <button type="button" class="delete-btn" @click="() => deleteCustomConfig(config)">删除</button>
               </div>
             </form>
           </div>
