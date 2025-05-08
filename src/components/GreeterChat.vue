@@ -674,19 +674,65 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
 }
 
 .model-selector {
-  padding: 16px;
+  padding: 12px 16px;
   border-bottom: 1px solid #e0e0e0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  background-color: #f8f8f8;
 }
 
 .model-selector select {
-  padding: 8px;
+  padding: 6px 12px;
   border: 1px solid #e0e0e0;
   border-radius: 4px;
   background-color: white;
+  min-width: 120px;
+  font-size: 14px;
+}
+
+.model-options {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.model-options-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.model-option-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
   cursor: pointer;
+  background-color: white;
+  transition: all 0.2s;
+}
+
+.model-option-item:hover {
+  background-color: #f0f0f0;
+}
+
+.model-option-item.active {
+  background-color: #42b98333;
+  border-color: #42b983;
+}
+
+.model-option-item input[type="radio"] {
+  margin: 0;
+}
+
+.model-option-item label {
+  cursor: pointer;
+  font-size: 14px;
 }
 
 .chat-messages {
