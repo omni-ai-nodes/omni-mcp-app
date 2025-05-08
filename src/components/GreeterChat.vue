@@ -438,19 +438,19 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
   content = content.replace(/\\hline/g, '──────');
   
   // 处理盒子
-  content = content.replace(/\\boxed\{(.*?)\}/g, '【$1】');
+  content = content.replace(/\\boxed\{(.*?)\}/g, '[$1]');
   
   // 处理加粗文本，保持紧凑
-  content = content.replace(/\*\*(.*?)\*\*/g, '【$1】');
+  content = content.replace(/\*\*(.*?)\*\*/g, '[$1]');
   
   // 处理步骤编号，优化格式
-  content = content.replace(/(\d+)\.\s*【(.*?)】/g, '$1：$2');
+  content = content.replace(/(\d+)\.\s*[(.*?)]/g, '$1：$2');
   
   // 移除多余的空行，只保留单个空行
   content = content.replace(/\n{2,}/g, '\n');
   
   // 处理空的『』对
-  content = content.replace(/『\s*』/g, '');
+  content = content.replace(/『\s*』/g, '').replace(/『\s*/g, '').replace(/』\s*/g, '');
   
   // 确保段落之间只有一个空行
   content = content.split('\n')
