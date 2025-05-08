@@ -21,8 +21,10 @@ interface ModelConfig {
   provider: string;
   api_url: string;
   model: string;
+  method: string;
   session_key: string;
   endpoint?: string;
+  modelOptions?: string[]; // 添加模型选项数组
 }
 
 const conversations = ref<Conversation[]>([]);
@@ -34,6 +36,8 @@ const currentModel = ref('openai');
 const modelConfigs = ref<Record<string, ModelConfig>>({});
 const streamingContent = ref('');
 const eventSource = ref<EventSource | null>(null);
+const modelOptions = ref<Record<string, string[]>>({});
+const selectedModelOption = ref<string>('');
 
 // 加载自定义模型配置
 async function loadCustomConfigs() {
@@ -45,9 +49,24 @@ async function loadCustomConfigs() {
     // 将配置保存到 modelConfigs 对象中
     configs.forEach(config => {
       modelConfigs.value[config.provider] = config;
+      
+      // 解析模型字符串，支持多个模型选择
+      if (config.model && config.model.includes(',')) {
+        const options = config.model.split(',').map(option => option.trim());
+        modelOptions.value[config.provider] = options;
+      } else {
+        // 单个模型的情况，也创建选项数组
+        modelOptions.value[config.provider] = [config.model];
+      }
+      
+      // 设置默认选中的模型选项
+      if (currentModel.value === config.provider) {
+        selectedModelOption.value = modelOptions.value[config.provider][0];
+      }
     });
     
     console.log('加载的模型配置:', modelConfigs.value);
+    console.log('模型选项:', modelOptions.value);
   } catch (error) {
     console.error('加载自定义模型配置失败:', error);
   }
@@ -116,8 +135,22 @@ function changeModel(model: string) {
   if (currentConversation.value) {
     currentConversation.value.model = model;
     currentModel.value = model;
+    
+    // 设置默认的模型选项
+    if (modelOptions.value[model] && modelOptions.value[model].length > 0) {
+      selectedModelOption.value = modelOptions.value[model][0];
+    } else {
+      selectedModelOption.value = '';
+    }
+    
     saveConversations();
   }
+}
+
+// 选择具体的模型选项
+function selectModelOption(option: string) {
+  selectedModelOption.value = option;
+  // 可以在这里添加其他逻辑，例如保存用户的选择
 }
 
 // 关闭 SSE 连接
@@ -153,8 +186,10 @@ async function sendMessage() {
     closeEventSource();
     
     const config = currentModelConfig.value;
-    const modelName = config.model;
+    // 使用选定的模型选项，如果没有则使用默认模型
+    const modelName = selectedModelOption.value || config.model;
     const apiUrl = config.api_url;
+    const method = config.method;
     const sessionKey = config.session_key;
     
     // 创建一个临时的消息对象用于流式显示
@@ -172,7 +207,7 @@ async function sendMessage() {
     let body = null;
     
     if (currentModel.value === 'openai') {
-      sseUrl = `${apiUrl}/v1/chat/completions`;
+      sseUrl = `${apiUrl}${method}`;
       headers.append('Content-Type', 'application/json');
       headers.append('Authorization', `Bearer ${sessionKey}`);
       
@@ -184,7 +219,7 @@ async function sendMessage() {
         stream: true
       });
     } else if (currentModel.value === 'ollama') {
-      sseUrl = `${apiUrl}`;
+      sseUrl = `${apiUrl}${method}`;
       headers.append('Content-Type', 'application/json');
       
       body = JSON.stringify({
@@ -196,7 +231,7 @@ async function sendMessage() {
       });
     } else {
       // 自定义模型，使用通用格式
-      sseUrl = `${apiUrl}`;
+      sseUrl = `${apiUrl}${method}`;
       headers.append('Content-Type', 'application/json');
       if (sessionKey) {
         headers.append('Authorization', `Bearer ${sessionKey}`);
@@ -419,6 +454,28 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
             {{ model }}
           </option>
         </select>
+        
+        <!-- 模型选项选择器 - 对所有模型都显示 -->
+        <div class="model-options" v-if="modelOptions[currentModel]">
+          <label>模型版本：</label>
+          <div class="model-options-list">
+            <div 
+              v-for="option in modelOptions[currentModel]" 
+              :key="option"
+              class="model-option-item"
+              :class="{ active: selectedModelOption === option }"
+              @click="selectModelOption(option)"
+            >
+              <input 
+                type="radio" 
+                :id="option" 
+                :value="option" 
+                v-model="selectedModelOption"
+              >
+              <label :for="option">{{ option }}</label>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div v-if="currentConversation" class="chat-messages">
@@ -724,15 +781,46 @@ textarea {
   font-size: 12px;
 }
 
+.model-options {
+  display: flex;
+  align-items: center;
+  margin-left: 20px;
+  gap: 10px;
+}
+
+.model-options-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.model-option-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.model-option-item:hover {
+  background-color: #f0f0f0;
+}
+
+.model-option-item.active {
+  background-color: #42b98333;
+}
+
 @media (prefers-color-scheme: dark) {
   /* ... existing code ... */
   
-  .think-header {
-    background-color: rgba(66, 185, 131, 0.2);
+  .model-option-item:hover {
+    background-color: #333;
   }
   
-  .think-body {
-    background-color: rgba(66, 185, 131, 0.1);
+  .model-option-item.active {
+    background-color: #42b98322;
   }
 }
 </style>
