@@ -39,6 +39,12 @@ const eventSource = ref<EventSource | null>(null);
 const modelOptions = ref<Record<string, string[]>>({});
 const selectedModelOption = ref<string>('');
 
+// 添加新的函数用于保存模型状态
+function saveModelState() {
+  localStorage.setItem('currentModel', currentModel.value);
+  localStorage.setItem('selectedModelOption', selectedModelOption.value);
+}
+
 // 加载自定义模型配置
 async function loadCustomConfigs() {
   try {
@@ -55,15 +61,22 @@ async function loadCustomConfigs() {
         const options = config.model.split(',').map(option => option.trim());
         modelOptions.value[config.provider] = options;
       } else {
-        // 单个模型的情况，也创建选项数组
         modelOptions.value[config.provider] = [config.model];
       }
-      
-      // 设置默认选中的模型选项
-      if (currentModel.value === config.provider) {
-        selectedModelOption.value = modelOptions.value[config.provider][0];
-      }
     });
+    
+    // 从 localStorage 恢复模型状态
+    const savedModel = localStorage.getItem('currentModel');
+    const savedModelOption = localStorage.getItem('selectedModelOption');
+    
+    if (savedModel && availableModels.value.includes(savedModel)) {
+      currentModel.value = savedModel;
+      if (savedModelOption && modelOptions.value[savedModel]?.includes(savedModelOption)) {
+        selectedModelOption.value = savedModelOption;
+      } else if (modelOptions.value[savedModel]?.length > 0) {
+        selectedModelOption.value = modelOptions.value[savedModel][0];
+      }
+    }
     
     console.log('加载的模型配置:', modelConfigs.value);
     console.log('模型选项:', modelOptions.value);
@@ -87,11 +100,10 @@ onMounted(async () => {
     // 为旧的对话添加模型字段
     conversations.value = conversations.value.map(conv => ({
       ...conv,
-      model: conv.model || 'openai'
+      model: conv.model || currentModel.value // 使用当前选择的模型作为默认值
     }));
     if (conversations.value.length > 0) {
       currentConversation.value = conversations.value[0];
-      currentModel.value = conversations.value[0].model;
     }
   }
 });
@@ -144,13 +156,14 @@ function changeModel(model: string) {
     }
     
     saveConversations();
+    saveModelState(); // 保存模型状态
   }
 }
 
 // 选择具体的模型选项
 function selectModelOption(option: string) {
   selectedModelOption.value = option;
-  // 可以在这里添加其他逻辑，例如保存用户的选择
+  saveModelState(); // 保存模型状态
 }
 
 // 关闭 SSE 连接
@@ -569,7 +582,7 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
           <div class="message-content" v-if="!hasThinkTag(msg.content)">{{ msg.content }}</div>
           <div class="message-content" v-else>
             <div>{{ processMessageContent(msg).normalContent }}</div>
-            <div class="think-container">
+            <div class="think-container" v-if="processMessageContent(msg).thinkContent">
               <div class="think-header" @click="toggleThink(msg.id)">
                 思考过程 <span class="toggle-icon">{{ isThinkExpanded(msg.id) ? '▼' : '►' }}</span>
               </div>
@@ -807,12 +820,14 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
 
 textarea {
   flex: 1;
-  padding: 12px;
+  height: 60px;
+  padding: 10px;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
   resize: none;
-  height: 60px;
-  font-family: inherit;
+  font-size: 16px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.5;
 }
 
 .input-area button {
