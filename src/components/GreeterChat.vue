@@ -720,8 +720,9 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
   line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
-  display: inline-block;  /* 添加这行 */
-  max-width: 100%;       /* 添加这行 */
+  display: inline-block;
+  max-width: 100%;
+  min-width: 60px;  /* 添加最小宽度 */
 }
 
 .message.user .message-content {
