@@ -163,9 +163,7 @@ function closeEventSource() {
 
 // 使用 SSE 发送消息
 async function sendMessage() {
-  if (!newMessage.value.trim() || !currentConversation.value || loading.value) return;
-  if (!currentModelConfig.value) {
-    console.error('当前模型配置不存在');
+  if (!newMessage.value.trim() || !currentConversation.value || loading.value || !currentModelConfig.value) {
     return;
   }
   
@@ -399,20 +397,80 @@ function isThinkExpanded(messageId: string): boolean {
 }
 
 // 处理消息显示，将 <think> 标签内容替换为折叠区域
+// 在 processMessageContent 函数中添加格式化处理
 function processMessageContent(msg: Message): { normalContent: string, thinkContent: string | null } {
-  if (!hasThinkTag(msg.content)) {
-    return { normalContent: msg.content, thinkContent: null };
+  let content = msg.content;
+  
+  // 处理数学公式块
+  content = content.replace(/\$\$(.*?)\$\$/g, (match, formula) => {
+    return `\n${formula.trim()}\n`;
+  });
+  
+  // 处理行内数学公式
+  content = content.replace(/\$(.*?)\$/g, (match, formula) => {
+    return `『${formula.trim()}』`;
+  });
+  
+  // 处理对齐块 - 优化间距
+  content = content.replace(/\\begin\{align\*\}([\s\S]*?)\\end\{align\*\}/g, (match, block) => {
+    const lines = block.split('\n')
+      .map(line => line.trim())
+      .filter(line => line)
+      .map(line => line.replace(/\\\\$/, ''))
+      .map(line => line.replace(/\\/, ''));
+    return lines.join('\n');  // 移除额外的换行
+  });
+  
+  // 处理水平线
+  content = content.replace(/\\hline/g, '──────');
+  
+  // 处理盒子
+  content = content.replace(/\\boxed\{(.*?)\}/g, '【$1】');
+  
+  // 处理加粗文本，保持紧凑
+  content = content.replace(/\*\*(.*?)\*\*/g, '【$1】');
+  
+  // 处理步骤编号，优化格式
+  content = content.replace(/(\d+)\.\s*【(.*?)】/g, '$1：$2');
+  
+  // 移除多余的空行，只保留单个空行
+  content = content.replace(/\n{2,}/g, '\n');
+  
+  // 处理空的『』对
+  content = content.replace(/『\s*』/g, '');
+  
+  // 确保段落之间只有一个空行
+  content = content.split('\n')
+    .reduce((lines, line) => {
+      const currentLine = line.trim();
+      const lastLine = lines[lines.length - 1] || '';
+      
+      // 如果当前行不为空，直接添加
+      if (currentLine) {
+        lines.push(currentLine);
+      }
+      // 如果当前行为空且上一行不为空，添加一个空行
+      else if (lastLine) {
+        lines.push('');
+      }
+      return lines;
+    }, [] as string[])
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n'); // 确保没有连续的多个空行
+  
+  if (!hasThinkTag(content)) {
+    return { normalContent: content, thinkContent: null };
   }
   
   const thinkRegex = /<think>([\s\S]*?)<\/think>/;
-  const match = msg.content.match(thinkRegex);
+  const match = content.match(thinkRegex);
   
   if (!match) {
-    return { normalContent: msg.content, thinkContent: null };
+    return { normalContent: content, thinkContent: null };
   }
   
   const thinkContent = match[1].trim();
-  const normalContent = msg.content.replace(thinkRegex, '').trim();
+  const normalContent = content.replace(thinkRegex, '').trim();
   
   return { normalContent, thinkContent };
 }
@@ -514,7 +572,10 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
           placeholder="输入消息，按Enter发送"
           :disabled="loading"
         ></textarea>
-        <button @click="sendMessage" :disabled="loading || !newMessage.trim()">
+        <button 
+          @click="sendMessage" 
+          :disabled="loading || !newMessage.trim() || !currentConversation || !currentModelConfig"
+        >
           {{ loading ? '发送中...' : '发送' }}
         </button>
       </div>
@@ -811,16 +872,72 @@ textarea {
 .model-option-item.active {
   background-color: #42b98333;
 }
+.message-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 
-@media (prefers-color-scheme: dark) {
-  /* ... existing code ... */
+/* 添加数学公式样式 */
+.math-formula {
+  margin: 1em 0;
+  padding: 0.5em;
+  background-color: rgba(66, 185, 131, 0.05);
+  border-left: 3px solid #42b983;
+  font-family: monospace;
+}
   
-  .model-option-item:hover {
-    background-color: #333;
+.message-content {
+  padding: 12px 16px;
+  border-radius: 12px;
+  background-color: #f0f0f0;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 添加数学公式样式 */
+.math-block {
+  margin: 1em 0;
+  padding: 0.8em;
+  background-color: rgba(66, 185, 131, 0.05);
+  border-left: 3px solid #42b983;
+  font-family: monospace;
+}
+
+/* 添加计算过程样式 */
+.calculation-process {
+  margin: 1em 0;
+  padding: 0.8em;
+  background-color: rgba(66, 185, 131, 0.05);
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+/* 添加步骤样式 */
+.step {
+  margin: 0.5em 0;
+  padding-left: 1em;
+  border-left: 2px solid #42b983;
+}
+
+/* 添加结果样式 */
+.result {
+  margin: 1em 0;
+  padding: 0.5em;
+  background-color: rgba(66, 185, 131, 0.1);
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+/* 暗色模式适配 */
+@media (prefers-color-scheme: dark) {
+  .math-block,
+  .calculation-process {
+    background-color: rgba(66, 185, 131, 0.1);
   }
   
-  .model-option-item.active {
-    background-color: #42b98322;
+  .result {
+    background-color: rgba(66, 185, 131, 0.15);
   }
 }
 </style>
