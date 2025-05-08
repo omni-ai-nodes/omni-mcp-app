@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, nextTick } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 
 interface Message {
@@ -177,10 +177,13 @@ function closeEventSource() {
 // 使用 SSE 发送消息
 // 添加一个新的方法来处理滚动
 function scrollToBottom() {
-  const chatMessages = document.querySelector('.chat-messages');
-  if (chatMessages) {
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  }
+  // 使用 nextTick 确保 DOM 更新后再滚动
+  nextTick(() => {
+    const chatMessages = document.querySelector('.chat-messages');
+    if (chatMessages) {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+  });
 }
 
 // 在 sendMessage 函数中的适当位置添加滚动调用
@@ -352,8 +355,8 @@ async function sendMessage() {
               const index = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id);
               if (index !== -1) {
                 currentConversation.value.messages[index] = { ...assistantMessage };
-                // 添加延时滚动，确保内容更新后再滚动
-                setTimeout(scrollToBottom, 0);
+                // 直接调用 scrollToBottom，不需要 setTimeout
+                scrollToBottom();
               }
             }
           } catch (e) {
@@ -393,8 +396,8 @@ async function sendMessage() {
   } finally {
     loading.value = false;
     saveConversations();
-    // 消息发送完成后再次滚动到底部
-    setTimeout(scrollToBottom, 100);
+    // 消息发送完成后再次滚动到底部，直接调用 scrollToBottom
+    scrollToBottom();
   }
 }
 
@@ -525,7 +528,12 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
           :key="conv.id"
           class="conversation-item"
           :class="{ active: currentConversation?.id === conv.id }"
-          @click="currentConversation = conv; currentModel = conv.model"
+          @click="() => {
+            currentConversation = conv;
+            currentModel = conv.model;
+            // 使用 scrollToBottom 函数，它内部已经使用了 nextTick
+            scrollToBottom();
+          }"
         >
           <span class="conversation-title">{{ conv.title }}</span>
           <button class="delete-btn" @click.stop="deleteConversation(conv)">
