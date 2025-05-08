@@ -242,8 +242,8 @@ async function fetchModels(apiUrl: string) {
     console.log('获取到的模型列表数据:', data);
     
     if (data && data.object === 'list' && Array.isArray(data.data)) {
-      // 提取模型ID并返回数组
-      const modelIds = data.data.map(model => model.id);
+      // 提取模型ID
+      const modelIds = data.data.map(model => model.id).join(',');
       console.log('提取的模型ID列表:', modelIds);
       return modelIds;
     } else {
@@ -271,11 +271,10 @@ async function fetchOpenAIModels() {
     const models = await fetchModels(openaiConfig.value.api_url);
     console.log('获取到的OpenAI模型列表:', models);
     
-    if (models && models.length > 0) {
-      // 存储完整的模型列表
-      openaiConfig.value.availableModels = models;
-      // 默认选择第一个模型
-      openaiConfig.value.model = models[0];
+    if (models) {
+      // const firstModel = models.split(',')[0];
+      // console.log('选择第一个模型:', firstModel);
+      openaiConfig.value.model = models;
     } else {
       console.error('未获取到有效的模型列表');
     }
@@ -288,18 +287,18 @@ async function fetchOpenAIModels() {
 // 为Ollama配置获取模型
 async function fetchOllamaModels() {
   const models = await fetchModels(ollamaConfig.value.api_url);
-  if (models && models.length > 0) {
-    ollamaConfig.value.availableModels = models;
-    ollamaConfig.value.model = models[0]; // 默认选择第一个模型
+  if (models) {
+    ollamaConfig.value.model = models; // 默认选择第一个模型
+  }else {
+      console.error('未获取到有效的模型列表');
   }
 }
 
 // 为自定义配置获取模型
 async function fetchCustomModels(config) {
   const models = await fetchModels(config.api_url);
-  if (models && models.length > 0) {
-    config.availableModels = models;
-    config.model = models[0]; // 默认选择第一个模型
+  if (models) {
+    config.model = models; // 默认选择第一个模型
   }
 }
 </script>
