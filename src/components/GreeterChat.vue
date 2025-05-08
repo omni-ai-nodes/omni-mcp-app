@@ -162,6 +162,15 @@ function closeEventSource() {
 }
 
 // 使用 SSE 发送消息
+// 添加一个新的方法来处理滚动
+function scrollToBottom() {
+  const chatMessages = document.querySelector('.chat-messages');
+  if (chatMessages) {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+}
+
+// 在 sendMessage 函数中的适当位置添加滚动调用
 async function sendMessage() {
   if (!newMessage.value.trim() || !currentConversation.value || loading.value || !currentModelConfig.value) {
     return;
@@ -320,6 +329,8 @@ async function sendMessage() {
               const index = currentConversation.value.messages.findIndex(m => m.id === assistantMessage.id);
               if (index !== -1) {
                 currentConversation.value.messages[index] = { ...assistantMessage };
+                // 添加延时滚动，确保内容更新后再滚动
+                setTimeout(scrollToBottom, 0);
               }
             }
           } catch (e) {
@@ -359,6 +370,8 @@ async function sendMessage() {
   } finally {
     loading.value = false;
     saveConversations();
+    // 消息发送完成后再次滚动到底部
+    setTimeout(scrollToBottom, 100);
   }
 }
 
@@ -680,6 +693,7 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
   flex: 1;
   overflow-y: auto;
   padding: 20px;
+  scroll-behavior: smooth; /* 添加平滑滚动效果 */
 }
 
 .message {
