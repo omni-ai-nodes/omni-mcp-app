@@ -744,7 +744,7 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
   background-color: var(--message-bg);
   color: var(--text-color);
   line-height: 1.6;
-  max-width: 85%;
+  max-width: 90%;
   box-shadow: 0 2px 4px var(--shadow-color);
   
   &.user {
@@ -808,7 +808,7 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
   margin: 10px;
   padding: 10px;
   border-radius: 8px;
-  max-width: 80%;
+  max-width: 95%;
   display: flex;
   flex-direction: column;
 }
