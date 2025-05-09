@@ -955,7 +955,6 @@ textarea {
   background-color: rgba(66, 185, 131, 0.05);
   word-break: break-word;
 }
-
 .toggle-icon {
   font-size: 12px;
 }
@@ -999,13 +998,13 @@ textarea {
 }
 
 .user .message-content {
-  background-color: #e3f2fd;
-  color: #1565c0;
+  background-color: #42b983;
+  color: white;
 }
 
 .assistant .message-content {
-  background-color: #f5f5f5;
-  color: #424242;
+  background-color: #e3f2fd;
+  color: black;
 }
 
 /* 添加数学公式样式 */
