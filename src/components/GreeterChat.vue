@@ -39,6 +39,9 @@ const eventSource = ref<EventSource | null>(null);
 const modelOptions = ref<Record<string, string[]>>({});
 const selectedModelOption = ref<string>('');
 
+const mcpServers = ref([]);
+const selectedMcpServers = ref(new Set()); // 改为使用 Set 存储多选值
+
 // 添加新的函数用于保存模型状态
 function saveModelState() {
   localStorage.setItem('currentModel', currentModel.value);
@@ -90,9 +93,20 @@ const currentModelConfig = computed(() => {
   return modelConfigs.value[currentModel.value] || null;
 });
 
+// 加载 MCP 服务器列表
+async function loadMcpServers() {
+  try {
+    const servers = await invoke('get_all_mcp_servers');
+    mcpServers.value = servers;
+  } catch (error) {
+    console.error('加载MCP服务器列表失败:', error);
+  }
+}
+
 // 从本地存储加载对话记录
 onMounted(async () => {
   await loadCustomConfigs(); // 加载自定义模型配置
+  await loadMcpServers(); // 加载MCP服务器列表
   
   const savedConversations = localStorage.getItem('chatConversations');
   if (savedConversations) {
@@ -610,18 +624,38 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
 
       <!-- 输入区域 -->
       <div class="input-area" v-if="currentConversation">
-        <textarea
-          v-model="newMessage"
-          @keyup.enter.exact="sendMessage"
-          placeholder="输入消息，按Enter发送"
-          :disabled="loading"
-        ></textarea>
-        <button 
-          @click="sendMessage" 
-          :disabled="loading || !newMessage.trim() || !currentConversation || !currentModelConfig"
-        >
-          {{ loading ? '发送中...' : '发送' }}
-        </button>
+        <div class="mcp-servers-selector">
+          <div class="mcp-servers-list">
+            <div class="mcp-servers-label">MCP Server:</div>
+            <div 
+              v-for="server in mcpServers" 
+              :key="server.server_name"
+              class="mcp-server-item"
+            >
+              <input 
+                type="checkbox"
+                :id="server.server_name"
+                :value="server.server_name"
+                v-model="selectedMcpServers"
+              >
+              <label :for="server.server_name">{{ server.server_name }}</label>
+            </div>
+          </div>
+        </div>
+        <div class="message-input">
+          <textarea
+            v-model="newMessage"
+            @keyup.enter.exact="sendMessage"
+            placeholder="输入消息，按Enter发送"
+            :disabled="loading"
+          ></textarea>
+          <button 
+            @click="sendMessage" 
+            :disabled="loading || !newMessage.trim() || !currentConversation || !currentModelConfig"
+          >
+            {{ loading ? '发送中...' : '发送' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -1066,5 +1100,148 @@ textarea {
   .result {
     background-color: rgba(66, 185, 131, 0.15);
   }
+}
+
+.input-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-top: 1px solid #e0e0e0;
+  background-color: #fff;
+}
+
+.mcp-servers-selector {
+  background-color: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.mcp-servers-title {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.mcp-servers-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.mcp-servers-label {
+  font-size: 14px;
+  color: #666;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  margin-right: 12px;
+}
+
+.mcp-server-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background-color: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mcp-server-item:hover {
+  background-color: #eef2ff;
+  border-color: #818cf8;
+}
+
+.mcp-server-item input[type="checkbox"] {
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 3px;
+  background-color: white;
+  position: relative;
+  margin: 0;
+  vertical-align: middle;
+  /* 移除 appearance: none; 保持原生宽高 */
+}
+
+.mcp-server-item input[type="checkbox"]:checked {
+  background-color: #6366f1;
+  border-color: #6366f1;
+}
+
+.mcp-server-item input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 2px;
+  width: 4px;
+  height: 7px;
+  border: solid white;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+.mcp-server-item input[type="checkbox"]:hover {
+  border-color: #818cf8;
+}
+
+.mcp-server-item label {
+  cursor: pointer;
+  font-size: 14px;
+  color: #4b5563;
+  user-select: none;
+}
+
+.mcp-server-item:has(input[type="checkbox"]:checked) {
+  background-color: #eef2ff;
+  border-color: #818cf8;
+}
+
+.message-input {
+  display: flex;
+  gap: 10px;
+}
+
+.message-input textarea {
+  flex: 1;
+  min-height: 60px;
+  padding: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  resize: vertical;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.message-input textarea:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+.message-input button {
+  padding: 0 20px;
+  background-color: #4a9eff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.message-input button:hover:not(:disabled) {
+  background-color: #3a8eef;
+}
+
+.message-input button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
 }
 </style>

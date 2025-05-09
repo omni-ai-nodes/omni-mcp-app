@@ -26,7 +26,7 @@ fn main() {
             model_config::get_custom_configs,
             model_config::delete_model_config,  // Add this line
             save_mcp_config::parse_mcp_config,
-            save_mcp_config::get_mcp_server_config,
+            save_mcp_config::get_all_mcp_servers,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

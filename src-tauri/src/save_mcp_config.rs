@@ -100,6 +100,53 @@ pub async fn get_mcp_server_config(server_name: String) -> Result<Option<McpServ
 }
 
 #[tauri::command]
+pub async fn get_all_mcp_servers() -> Result<Vec<McpServerConfig>, String> {
+    let db = get_db()?;
+    db.init_mcp_servers_table().map_err(|e| format!("初始化表失败: {}", e))?;
+    
+    let conn = db.get_connection();
+    
+    let mut stmt = match conn.prepare("SELECT server_name, command, args, disabled FROM mcpServers") {
+        Ok(stmt) => stmt,
+        Err(e) => {
+            let error_msg = format!("准备查询语句失败: {}", e);
+            println!("{}", error_msg);
+            return Err(error_msg);
+        }
+    };
+    
+    let rows = stmt.query_map([], |row| {
+        let server_name: String = row.get(0)?;
+        let command: String = row.get(1)?;
+        let args_json: String = row.get(2)?;
+        let disabled: String = row.get(3)?;
+        
+        let args: Vec<String> = serde_json::from_str(&args_json)
+            .map_err(|e| rusqlite::Error::FromSqlConversionFailure(
+                0,
+                rusqlite::types::Type::Text,
+                Box::new(e),
+            ))?;
+        
+        Ok(McpServerConfig {
+            server_name,
+            command,
+            args,
+            disabled: disabled.parse().unwrap_or(false),
+        })
+    }).map_err(|e| e.to_string())?;
+    
+    let mut configs = Vec::new();
+    for row in rows {
+        if let Ok(config) = row {
+            configs.push(config);
+        }
+    }
+    
+    Ok(configs)
+}
+
+#[tauri::command]
 pub fn parse_mcp_config(config: &str) -> Result<String, String> {
     // 首先尝试解析 JSON
     let parsed_result: Result<Value, serde_json::Error> = serde_json::from_str(config);
