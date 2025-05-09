@@ -37,7 +37,7 @@ pub fn init_db() -> Result<Connection> {
         .join("omni-mcp-app");
     
     std::fs::create_dir_all(&app_dir).expect("无法创建应用数据目录");
-    let db_path = app_dir.join("model_config.db");
+    let db_path = app_dir.join("omni_mcp.db");
     println!("数据库路径: {:?}", db_path);
     
     let conn = Connection::open(db_path)?;

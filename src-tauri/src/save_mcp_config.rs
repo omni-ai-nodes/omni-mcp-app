@@ -13,31 +13,13 @@ pub struct McpServerConfig {
     pub disabled: bool,
 }
 
-fn column_exists(conn: &Connection, table: &str, column: &str) -> bool {
-    let query = format!("PRAGMA table_info({})", table);
-    let mut stmt = conn.prepare(&query).unwrap();
-    let columns = stmt.query_map([], |row| {
-        let name: String = row.get(1)?;
-        Ok(name)
-    }).unwrap();
-    
-    for col_result in columns {
-        if let Ok(name) = col_result {
-            if name == column {
-                return true;
-            }
-        }
-    }
-    false
-}
-
 pub fn init_db(table_name: &str) -> Result<Connection> {
     let app_dir = dirs::data_dir()
         .expect("无法获取应用数据目录")
         .join("omni-mcp-app");
     
     std::fs::create_dir_all(&app_dir).expect("无法创建应用数据目录");
-    let db_path = app_dir.join("mcp_server.db");
+    let db_path = app_dir.join("omni_mcp.db");
     println!("数据库路径: {:?}", db_path);
     
     let conn = Connection::open(db_path)?;
