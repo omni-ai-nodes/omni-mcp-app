@@ -103,25 +103,6 @@ export  async function loadMcpServers() {
   }
 }
 
-// 从本地存储加载对话记录
-onMounted(async () => {
-  await loadCustomConfigs(); // 加载自定义模型配置
-  await loadMcpServers(); // 加载MCP服务器列表
-  
-  const savedConversations = localStorage.getItem('chatConversations');
-  if (savedConversations) {
-    conversations.value = JSON.parse(savedConversations);
-    // 为旧的对话添加模型字段
-    conversations.value = conversations.value.map(conv => ({
-      ...conv,
-      model: conv.model || currentModel.value // 使用当前选择的模型作为默认值
-    }));
-    if (conversations.value.length > 0) {
-      currentConversation.value = conversations.value[0];
-    }
-  }
-});
-
 // 保存对话记录到本地存储
 export function saveConversations() {
   localStorage.setItem('chatConversations', JSON.stringify(conversations.value));
@@ -131,16 +112,21 @@ export function saveConversations() {
 export function createNewConversation() {
     const newConv: Conversation = {
         id: Date.now().toString(),
-        title: '新对话',  // 先设置一个默认标题
+        title: '新对话',
         messages: [],
         timestamp: Date.now(),
         model: currentModel.value
     };
     conversations.value.unshift(newConv);
     currentConversation.value = newConv;
-    saveConversations();
-    // 添加调用 get_custom_configs
-    loadCustomConfigs();
+    
+    // 在保存对话前加载最新配置
+    loadCustomConfigs().then(() => {
+        saveConversations();
+    }).catch(error => {
+        console.error('加载配置失败:', error);
+        saveConversations();
+    });
 }
 
 // 删除对话

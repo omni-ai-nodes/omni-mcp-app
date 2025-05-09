@@ -32,6 +32,26 @@ import {
   isThinkExpanded,
   processMessageContent
 } from './GreeterChat.ts';
+import { onMounted as vueOnMounted } from 'vue'
+
+// 组件挂载时初始化
+// 从本地存储加载对话记录
+vueOnMounted(async () => {
+  await loadCustomConfigs()
+  await loadMcpServers()
+  const savedConversations = localStorage.getItem('chatConversations');
+  if (savedConversations) {
+    conversations.value = JSON.parse(savedConversations);
+    // 为旧的对话添加模型字段
+    conversations.value = conversations.value.map(conv => ({
+      ...conv,
+      model: conv.model || currentModel.value // 使用当前选择的模型作为默认值
+    }));
+    if (conversations.value.length > 0) {
+      currentConversation.value = conversations.value[0];
+    }
+  }
+})
 </script>
 
 <template>
