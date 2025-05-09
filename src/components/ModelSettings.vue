@@ -445,15 +445,15 @@ async function fetchCustomModels(config) {
               <label>API 方法:</label>
               <input 
                 type="text" 
-                v-model="ollamaConfig.method"
+                v-model="newApiConfig.method"
                 placeholder="/v1/chat/completions" 
               />
               <div class="input-tip">
                 提示: API 结尾自动补全 /v1/chat/completions
               </div>
               <button type="button" class="fetch-btn" @click="async () => {
-                const models = await fetchModels(newApiConfig.api_url);
-                if (models) newApiConfig.model = models.split(',')[0];
+                const models = await fetchModels(newApiConfig.api_url, newApiConfig.session_key);
+                if (models) newApiConfig.model = models;
               }">获取模型列表</button>
             </div>
             <div class="form-group">
