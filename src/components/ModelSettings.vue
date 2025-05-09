@@ -179,10 +179,10 @@ async function deleteCustomConfig(config) {
   console.log('确认对话框即将弹出');
   console.log('当前浏览器设置:', window.navigator.userAgent);
   console.log('confirm函数存在:', typeof confirm === 'function');
-  const confirmed2 = await confirm(`确定要删除 ${config.provider} 配置吗？`, { title: '删除', kind: '取消' });
+  const confirmed = await confirm(`确定要删除 ${config.provider} 配置吗？`, { title: '删除', kind: 'warning' });
   // const yes2 = await ask('This action cannot be reverted. Are you sure?', { title: 'Tauri', kind: 'warning' });
 
-  if (!confirmed2) {
+  if (!confirmed) {
     console.log('用户取消了删除操作');
     return;
   }
@@ -204,7 +204,7 @@ async function deleteCustomConfig(config) {
       activeMenu.value = 'openai';
     }
     
-    alert(`配置 ${config.provider} 已删除`);
+    // alert(`配置 ${config.provider} 已删除`);
   } catch (error) {
     console.error('删除自定义配置失败:', error);
     alert(`删除失败: ${error}`);
