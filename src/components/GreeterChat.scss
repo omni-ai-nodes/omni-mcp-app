@@ -1,0 +1,583 @@
+// 确保基础样式存在
+.chat-container {
+  display: flex;
+  height: 100%;
+  background-color: #ffffff;
+}
+
+.conversations-sidebar {
+width: 250px;
+border-right: 1px solid #e0e0e0;
+display: flex;
+flex-direction: column;
+background-color: #f5f5f5;
+}
+
+.new-chat-btn {
+margin: 16px;
+padding: 10px;
+background-color: #42b983;
+color: white;
+border: none;
+border-radius: 6px;
+cursor: pointer;
+transition: background-color 0.2s;
+}
+
+.new-chat-btn:hover {
+background-color: #3aa876;
+}
+
+.conversations-list {
+flex: 1;
+overflow-y: auto;
+padding: 8px;
+}
+
+.conversation-item {
+display: flex;
+align-items: center;
+justify-content: space-between;
+padding: 10px;
+margin: 4px 0;
+border-radius: 6px;
+cursor: pointer;
+transition: background-color 0.2s;
+}
+
+.conversation-item:hover {
+background-color: #e0e0e0;
+}
+
+.conversation-item.active {
+background-color: #42b98333;
+}
+
+.delete-btn {
+padding: 4px 8px;
+background-color: #ff4444;
+color: white;
+border: none;
+border-radius: 4px;
+cursor: pointer;
+opacity: 0;
+transition: opacity 0.2s;
+}
+
+.conversation-item:hover .delete-btn {
+opacity: 1;
+}
+
+.chat-main {
+flex: 1;
+display: flex;
+flex-direction: column;
+background-color: #ffffff;
+}
+
+.model-selector {
+display: flex;
+flex-wrap: wrap;
+align-items: center;
+gap: 12px;
+padding: 12px;
+border: 1px solid var(--border-color);
+border-radius: 8px;
+margin-bottom: 16px;
+transition: background-color 0.3s ease;
+}
+
+.model-selector select {
+padding: 6px 12px;
+border: 1px solid #e0e0e0;
+border-radius: 4px;
+background-color: white;
+min-width: 120px;
+font-size: 14px;
+}
+
+.model-options {
+display: flex;
+align-items: center;
+gap: 8px;
+flex-wrap: wrap;
+}
+
+.model-options-list {
+display: flex;
+gap: 8px;
+flex-wrap: wrap;
+}
+
+.message-content {
+padding: 12px 16px;
+border-radius: 12px;
+background-color: var(--message-bg);
+color: var(--text-color);
+line-height: 1.6;
+max-width: 90%;
+box-shadow: 0 2px 4px var(--shadow-color);
+
+&.user {
+    --message-bg: var(--user-bg);
+    align-self: flex-end;
+}
+
+&.assistant {
+    --message-bg: var(--assistant-bg);
+    align-self: flex-start;
+}
+}
+
+@media (prefers-color-scheme: dark) {
+:root {
+    --bg-color: #2d2d2d;
+    --border-color: #404040;
+    --text-color: #e0e0e0;
+    --user-bg: #3a5ab3;
+    --assistant-bg: #333333;
+    --shadow-color: rgba(0,0,0,0.2);
+}
+}
+.model-option-item {
+display: flex;
+align-items: center;
+gap: 4px;
+padding: 4px 8px;
+border: 1px solid #e0e0e0;
+border-radius: 4px;
+cursor: pointer;
+transition: all 0.2s;
+}
+
+.model-option-item:hover {
+background-color: #f0f0f0;
+}
+
+.model-option-item.active {
+background-color: #42b98333;
+border-color: #42b983;
+}
+
+.model-option-item input[type="radio"] {
+margin: 0;
+}
+
+.model-option-item label {
+cursor: pointer;
+font-size: 14px;
+}
+
+.chat-messages {
+flex: 1;
+overflow-y: auto;
+padding: 20px;
+scroll-behavior: smooth; /* 添加平滑滚动效果 */
+}
+
+.message {
+margin: 10px;
+padding: 10px;
+border-radius: 8px;
+max-width: 95%;
+display: flex;
+flex-direction: column;
+}
+
+.message.user {
+margin-left: auto;
+align-items: flex-end;
+}
+
+.message.assistant {
+margin-right: auto;
+align-items: flex-start;
+}
+
+.message-time {
+font-size: 12px;
+color: #666;
+margin-top: 4px;
+text-align: right;
+}
+
+.input-area {
+padding: 20px;
+border-top: 1px solid #e0e0e0;
+display: flex;
+gap: 10px;
+}
+
+textarea {
+flex: 1;
+height: 60px;
+padding: 10px;
+border: 1px solid #e0e0e0;
+border-radius: 6px;
+resize: none;
+font-size: 16px;
+font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+line-height: 1.5;
+}
+
+.input-area button {
+padding: 0 20px;
+background-color: #42b983;
+color: white;
+border: none;
+border-radius: 6px;
+cursor: pointer;
+transition: background-color 0.2s;
+}
+
+.input-area button:disabled {
+background-color: #cccccc;
+cursor: not-allowed;
+}
+
+.no-conversation {
+display: flex;
+align-items: center;
+justify-content: center;
+height: 100%;
+color: #666;
+font-size: 1.2em;
+}
+
+@media (prefers-color-scheme: dark) {
+.chat-container {
+    background-color: #1a1a1a;
+}
+
+.conversations-sidebar {
+    background-color: #2a2a2a;
+    border-right-color: #333;
+}
+
+.conversation-item:hover {
+    background-color: #333;
+}
+
+.conversation-item.active {
+    background-color: #42b98322;
+}
+
+.chat-main {
+    background-color: #1a1a1a;
+}
+
+.model-selector {
+    border-bottom-color: #333;
+}
+
+.model-selector select {
+    background-color: #333;
+    border-color: #444;
+    color: #fff;
+}
+
+.message-content {
+    background-color: #333;
+    color: #fff;
+}
+
+.message.user .message-content {
+    background-color: #42b983;
+}
+
+.message-time {
+    color: #999;
+}
+
+.input-area {
+    border-top-color: #333;
+}
+
+textarea {
+    background-color: #333;
+    border-color: #444;
+    color: #fff;
+}
+
+.no-conversation {
+    color: #999;
+}
+}
+.think-container {
+margin-top: 8px;
+border-left: 3px solid #42b983;
+border-radius: 6px;
+overflow: hidden;
+}
+
+.think-header {
+padding: 8px;
+background-color: rgba(66, 185, 131, 0.1);
+cursor: pointer;
+font-weight: bold;
+display: flex;
+justify-content: space-between;
+align-items: center;
+}
+
+.think-body {
+padding: 12px;
+white-space: pre-wrap;
+background-color: rgba(66, 185, 131, 0.05);
+word-break: break-word;
+}
+.toggle-icon {
+font-size: 12px;
+}
+
+.model-options {
+display: flex;
+align-items: center;
+margin-left: 20px;
+gap: 10px;
+}
+
+.model-options-list {
+display: flex;
+flex-wrap: wrap;
+gap: 10px;
+}
+
+.model-option-item {
+display: flex;
+align-items: center;
+gap: 4px;
+padding: 4px 8px;
+border-radius: 4px;
+cursor: pointer;
+transition: background-color 0.2s;
+}
+
+.model-option-item:hover {
+background-color: #f0f0f0;
+}
+
+.model-option-item.active {
+background-color: #42b98333;
+}
+.message-content {
+padding: 12px;
+border-radius: 8px;
+line-height: 1.5;
+white-space: pre-wrap;
+word-break: break-word;
+}
+
+.user .message-content {
+background-color: #42b983;
+color: white;
+}
+
+.assistant .message-content {
+background-color: #e3f2fd;
+color: black;
+}
+
+/* 添加数学公式样式 */
+.math-formula {
+margin: 1em 0;
+padding: 0.5em;
+background-color: rgba(66, 185, 131, 0.05);
+border-left: 3px solid #42b983;
+font-family: monospace;
+}
+
+/* 暗色模式适配 */
+@media (prefers-color-scheme: dark) {
+.math-formula {
+    background-color: rgba(66, 185, 131, 0.1);
+}
+}
+/* 添加数学公式样式 */
+.math-block {
+margin: 1em 0;
+padding: 0.8em;
+background-color: rgba(66, 185, 131, 0.05);
+border-left: 3px solid #42b983;
+font-family: monospace;
+}
+
+/* 添加计算过程样式 */
+.calculation-process {
+margin: 1em 0;
+padding: 0.8em;
+background-color: rgba(66, 185, 131, 0.05);
+border-radius: 4px;
+font-family: monospace;
+}
+
+/* 添加步骤样式 */
+.step {
+margin: 0.5em 0;
+padding-left: 1em;
+border-left: 2px solid #42b983;
+}
+
+/* 添加结果样式 */
+.result {
+margin: 1em 0;
+padding: 0.5em;
+background-color: rgba(66, 185, 131, 0.1);
+border-radius: 4px;
+font-weight: bold;
+}
+
+/* 暗色模式适配 */
+@media (prefers-color-scheme: dark) {
+.math-block,
+.calculation-process {
+    background-color: rgba(66, 185, 131, 0.1);
+}
+
+.result {
+    background-color: rgba(66, 185, 131, 0.15);
+}
+}
+
+.input-area {
+display: flex;
+flex-direction: column;
+gap: 12px;
+padding: 16px;
+border-top: 1px solid #e0e0e0;
+background-color: #fff;
+}
+
+.mcp-servers-selector {
+background-color: #f8f9fa;
+border: 1px solid #e0e0e0;
+border-radius: 6px;
+padding: 12px;
+}
+
+.mcp-servers-title {
+font-size: 14px;
+color: #666;
+margin-bottom: 8px;
+font-weight: 500;
+}
+
+.mcp-servers-list {
+display: flex;
+flex-wrap: wrap;
+gap: 8px;
+align-items: center;
+}
+
+.mcp-servers-label {
+font-size: 14px;
+color: #666;
+display: flex;
+align-items: center;
+height: 32px;
+margin-right: 12px;
+}
+
+.mcp-server-item {
+display: flex;
+align-items: center;
+gap: 6px;
+padding: 6px 10px;
+background-color: #f8f9fa;
+border: 1px solid #e0e0e0;
+border-radius: 4px;
+cursor: pointer;
+transition: all 0.2s ease;
+}
+
+.mcp-server-item:hover {
+background-color: #eef2ff;
+border-color: #818cf8;
+}
+
+.mcp-server-item input[type="checkbox"] {
+cursor: pointer;
+width: 14px;
+height: 14px;
+border: 1.5px solid #d1d5db;
+border-radius: 3px;
+background-color: white;
+position: relative;
+margin: 0;
+vertical-align: middle;
+/* 移除 appearance: none; 保持原生宽高 */
+}
+
+.mcp-server-item input[type="checkbox"]:checked {
+background-color: #6366f1;
+border-color: #6366f1;
+}
+
+.mcp-server-item input[type="checkbox"]:checked::after {
+content: '';
+position: absolute;
+left: 4px;
+top: 2px;
+width: 4px;
+height: 7px;
+border: solid white;
+border-width: 0 1.5px 1.5px 0;
+transform: rotate(45deg);
+}
+
+.mcp-server-item input[type="checkbox"]:hover {
+border-color: #818cf8;
+}
+
+.mcp-server-item label {
+cursor: pointer;
+font-size: 14px;
+color: #4b5563;
+user-select: none;
+}
+
+.mcp-server-item:has(input[type="checkbox"]:checked) {
+background-color: #eef2ff;
+border-color: #818cf8;
+}
+
+.message-input {
+display: flex;
+gap: 10px;
+}
+
+.message-input textarea {
+flex: 1;
+min-height: 60px;
+padding: 10px;
+border: 1px solid #e0e0e0;
+border-radius: 4px;
+resize: vertical;
+font-size: 14px;
+line-height: 1.5;
+}
+
+.message-input textarea:focus {
+outline: none;
+border-color: #4a9eff;
+}
+
+.message-input button {
+padding: 0 20px;
+background-color: #4a9eff;
+color: white;
+border: none;
+border-radius: 4px;
+cursor: pointer;
+font-size: 14px;
+transition: background-color 0.2s;
+}
+
+.message-input button:hover:not(:disabled) {
+background-color: #3a8eef;
+}
+
+.message-input button:disabled {
+background-color: #ccc;
+cursor: not-allowed;
+}

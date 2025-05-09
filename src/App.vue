@@ -2,7 +2,6 @@
 import { ref, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 // 导入 Tauri shell API
-import { open } from '@tauri-apps/plugin-shell';
 import { useI18n } from 'vue-i18n';
 
 const { locale } = useI18n();
