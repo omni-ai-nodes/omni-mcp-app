@@ -805,7 +805,9 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
 }
 
 .message {
-  margin: 12px 0;
+  margin: 10px;
+  padding: 10px;
+  border-radius: 8px;
   max-width: 80%;
   display: flex;
   flex-direction: column;
@@ -820,7 +822,6 @@ function processMessageContent(msg: Message): { normalContent: string, thinkCont
   margin-right: auto;
   align-items: flex-start;
 }
-
 
 .message-time {
   font-size: 12px;
@@ -990,8 +991,21 @@ textarea {
   background-color: #42b98333;
 }
 .message-content {
+  padding: 12px;
+  border-radius: 8px;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.user .message-content {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.assistant .message-content {
+  background-color: #f5f5f5;
+  color: #424242;
 }
 
 /* 添加数学公式样式 */

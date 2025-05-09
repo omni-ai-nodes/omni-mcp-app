@@ -372,6 +372,10 @@ async function fetchCustomModels(config) {
                 />
             </div>
             <div class="form-group">
+              <label>Session Key:</label>
+              <input type="text" v-model="openaiConfig.session_key" />
+            </div>
+            <div class="form-group">
               <label>API 方法:</label>
               <input 
                 type="text" 
@@ -386,10 +390,6 @@ async function fetchCustomModels(config) {
             <div class="form-group">
               <label>模型名称:</label>
               <input type="text" v-model="openaiConfig.model" />
-            </div>
-            <div class="form-group">
-              <label>Session Key:</label>
-              <input type="text" v-model="openaiConfig.session_key" />
             </div>
             <button type="submit">保存配置</button>
           </form>
@@ -442,6 +442,10 @@ async function fetchCustomModels(config) {
               />
             </div>
             <div class="form-group">
+              <label>Session Key:</label>
+              <input type="text" v-model="newApiConfig.session_key" />
+            </div>
+            <div class="form-group">
               <label>API 方法:</label>
               <input 
                 type="text" 
@@ -461,10 +465,6 @@ async function fetchCustomModels(config) {
               <input type="text" v-model="newApiConfig.model" />
              
             </div>
-            <div class="form-group">
-              <label>Session Key:</label>
-              <input type="text" v-model="newApiConfig.session_key" />
-            </div>
             <button type="submit">保存配置</button>
           </form>
         </div>
@@ -482,6 +482,10 @@ async function fetchCustomModels(config) {
                   v-model="config.api_url"
                   placeholder="https://api.siliconflow.cn" 
                 />
+                <div class="form-group">
+                  <label>Session Key:</label>
+                  <input type="text" v-model="config.session_key" />
+                </div>
                 <div class="input-tip">
                   提示：/ 结尾自动补全 /v1/chat/completions，# 结尾使用原始地址
                 </div>
@@ -490,10 +494,6 @@ async function fetchCustomModels(config) {
               <div class="form-group">
                 <label>模型名称:</label>
                 <input type="text" v-model="config.model" />
-              </div>
-              <div class="form-group">
-                <label>Session Key:</label>
-                <input type="text" v-model="config.session_key" />
               </div>
               <div class="button-group">
                 <button type="submit">更新配置</button>
