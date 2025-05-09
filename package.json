@@ -11,6 +11,7 @@
     "tauri:dev": "cross-env RUST_LOG=info tauri dev"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.11.1",
     "@tauri-apps/api": "^2.5.0",
     "@tauri-apps/plugin-dialog": "^2.2.1",
     "@tauri-apps/plugin-opener": "^2",

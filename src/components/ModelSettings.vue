@@ -57,14 +57,14 @@ async function saveOpenAIConfig() {
     await invoke('save_model_config', { 
       provider: 'openai',
       config: {
-        provider: 'openai',  // 添加这一行，确保 config 对象中也包含 provider
-        api_url: formatapi_url(openaiConfig.value.api_url),
+        provider: 'openai',
+        api_url: formatapi_url(openaiConfig.value.api_url), // 使用 formatapi_url 处理 API 地址
         model: openaiConfig.value.model,
         session_key: openaiConfig.value.session_key,
         endpoint: openaiConfig.value.endpoint || ''
       }
     });
-    await loadModelConfigs(); // 保存后重新加载
+    await loadModelConfigs();
   } catch (error) {
     console.error('保存OpenAI配置失败:', error);
   }
@@ -76,14 +76,14 @@ async function saveOllamaConfig() {
     await invoke('save_model_config', { 
       provider: 'ollama',
       config: {
-        provider: 'ollama',  // 添加这一行，确保 config 对象中也包含 provider
-        api_url: ollamaConfig.value.api_url || '',
+        provider: 'ollama',
+        api_url: formatapi_url(ollamaConfig.value.api_url), // 使用 formatapi_url 处理 API 地址
         model: ollamaConfig.value.model,
         session_key: ollamaConfig.value.session_key || '',
-        endpoint: formatapi_url(ollamaConfig.value.endpoint)
+        endpoint: ollamaConfig.value.endpoint || ''
       }
     });
-    await loadModelConfigs(); // 保存后重新加载
+    await loadModelConfigs();
   } catch (error) {
     console.error('保存Ollama配置失败:', error);
   }
@@ -139,14 +139,19 @@ async function saveNewApiConfig() {
 
 const formatapi_url = (url: string) => {
   if (!url) return '';
-  if (url.endsWith('#')) {
-    return url.slice(0, -1); // 移除#并保持原始地址
+  
+  // 先去除末尾的斜杠
+  let formattedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+  
+  // 然后处理特殊情况
+  if (formattedUrl.endsWith('#')) {
+    return formattedUrl; // 如果以#结尾，直接返回（已经去除了末尾斜杠）
   }
-  if (url.endsWith('/v')) {
-    const baseUrl = url.slice(0, -1); // 移除末尾的/
-    return `${baseUrl}v1/chat/completions`;
+  if (formattedUrl.endsWith('/v')) {
+    formattedUrl = formattedUrl.slice(0, -2); // 移除 '/v'
+    return `${formattedUrl}/v1/chat/completions`;
   }
-  return url;
+  return formattedUrl;
 };
 
 const handleapi_urlInput = (event: Event, config: any) => {
@@ -259,8 +264,8 @@ async function fetchModels(apiUrl: string, sessionKey?: string) {
       'Content-Type': 'application/json'
     };
 
-    // 如果提供了 session_key，添加到请求头
-    if (sessionKey) {
+    // 只有当 sessionKey 存在且不为空字符串时才添加 Authorization 头
+    if (sessionKey && sessionKey.trim() !== '') {
       headers['Authorization'] = `Bearer ${sessionKey}`;
     }
     
