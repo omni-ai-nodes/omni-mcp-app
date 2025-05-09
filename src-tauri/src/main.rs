@@ -8,7 +8,7 @@ mod github_handler;
 use github_handler::open_github_link;
 mod model_config;
 mod save_mcp_config;
-
+mod sqlite_db;
 // Remove this unused import
 // use crate::db::ModelConfig;
 

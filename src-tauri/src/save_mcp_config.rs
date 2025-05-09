@@ -1,9 +1,9 @@
 use std::path;
 
-use rusqlite::{Connection, Result};
+use rusqlite::{Result};
 use serde::{Deserialize, Serialize};
-use dirs;
-use serde_json::{Value, json};
+use serde_json::Value;
+use crate::sqlite_db::Database;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct McpServerConfig {
@@ -13,45 +13,8 @@ pub struct McpServerConfig {
     pub disabled: bool,
 }
 
-pub fn init_db(table_name: &str) -> Result<Connection> {
-    let app_dir = dirs::data_dir()
-        .expect("无法获取应用数据目录")
-        .join("omni-mcp-app");
-    
-    std::fs::create_dir_all(&app_dir).expect("无法创建应用数据目录");
-    let db_path = app_dir.join("omni_mcp.db");
-    println!("数据库路径: {:?}", db_path);
-    
-    let conn = Connection::open(db_path)?;
-    
-    // 检查表是否存在
-    let table_exists = conn.query_row(
-        &format!("SELECT name FROM sqlite_master WHERE type='table' AND name='{}'", table_name),
-        [],
-        |_| Ok(true)
-    ).unwrap_or(false);
-    
-    println!("表是否存在: {}", table_exists);
-    
-    if !table_exists {
-        // 创建新表
-        let create_table_sql = format!(
-            "CREATE TABLE {} (
-                server_name TEXT PRIMARY KEY,
-                command TEXT,
-                args TEXT,
-                disabled BOOLEAN
-            )",
-            table_name
-        );
-        
-        match conn.execute(&create_table_sql, []) {
-            Ok(_) => println!("成功创建{}表", table_name),
-            Err(e) => println!("创建表失败: {}", e),
-        }
-    }
-    
-    Ok(conn)
+fn get_db() -> Result<Database, String> {
+    Database::new().map_err(|e| format!("初始化数据库失败: {}", e))
 }
 
 const TABLE_NAME: &str = "mcpServers";
@@ -59,14 +22,10 @@ const TABLE_NAME: &str = "mcpServers";
 pub fn save_mcp_server_config(config: McpServerConfig) -> Result<(), String> {
     println!("保存配置: config={:?}", config);
     
-    let conn = match init_db(&TABLE_NAME) {
-        Ok(conn) => conn,
-        Err(e) => {
-            let error_msg = format!("初始化数据库失败: {}", e);
-            println!("{}", error_msg);
-            return Err(error_msg);
-        }
-    };
+    let db = get_db()?;
+    db.init_mcp_servers_table().map_err(|e| format!("初始化表失败: {}", e))?;
+    
+    let conn = db.get_connection();
     
     // 将args转换为JSON字符串
     let args_json = serde_json::to_string(&config.args)
@@ -103,16 +62,12 @@ pub fn save_mcp_server_config(config: McpServerConfig) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn get_mcp_server_config(server_name: String) -> Result<Option<McpServerConfig>, String> {
-    let conn = match init_db("mcpServers") {
-        Ok(conn) => conn,
-        Err(e) => {
-            let error_msg = format!("初始化数据库失败: {}", e);
-            println!("{}", error_msg);
-            return Err(error_msg);
-        }
-    };
+    let db = get_db()?;
+    db.init_mcp_servers_table().map_err(|e| format!("初始化表失败: {}", e))?;
     
-    let mut stmt = match conn.prepare("SELECT command, args, disabled FROM qiniu WHERE server_name = ?") {
+    let conn = db.get_connection();
+    
+    let mut stmt = match conn.prepare("SELECT command, args, disabled FROM mcpServers WHERE server_name = ?") {
         Ok(stmt) => stmt,
         Err(e) => {
             let error_msg = format!("准备查询语句失败: {}", e);
@@ -143,9 +98,6 @@ pub async fn get_mcp_server_config(server_name: String) -> Result<Option<McpServ
     
     Ok(result)
 }
-
-
-
 
 #[tauri::command]
 pub fn parse_mcp_config(config: &str) -> Result<String, String> {
@@ -207,26 +159,37 @@ pub fn parse_mcp_config(config: &str) -> Result<String, String> {
                             Ok(_) => {
                                 success_count += 1;
                                 println!("成功保存服务器配置: {}", server_name);
+                                
+                                // 创建服务器目录
+                                if let Err(e) = create_mcp_server_dir(&server_name) {
+                                    error_messages.push(format!("创建服务器 {} 目录失败: {}", server_name, e));
+                                }
                             },
                             Err(e) => {
                                 error_messages.push(format!("保存服务器 {} 配置失败: {}", server_name, e));
                             }
                         }
                     }
+                    
+                    // 创建 .env 文件 - 为每个服务器创建目录和环境变量文件
+                    let app_dir = get_mcp_server_dir(&server_name)?;
+                    std::fs::create_dir_all(&app_dir)
+                        .map_err(|e| format!("创建应用目录失败: {}", e))?;
+                    
+                    // 创建 .env 文件
+                    let env_file_path = app_dir.join(".env");
+                    println!("mcpServer .env save: {}", env_file_path.to_str().unwrap());
+                    // 写入 .env 文件
+                    std::fs::write(&env_file_path, env_content.trim())
+                        .map_err(|e| format!("写入 .env 文件失败: {}", e))?;
                 }
             }
             
             // 获取用户主目录
-            let home_dir = path::PathBuf::from("C:\\Users\\DELL\\Desktop\\test");
-      
-            let env_file_path = home_dir.join(".env");
-            
-            // 写入 .env 文件
-            std::fs::write(&env_file_path, env_content.trim())
-                .map_err(|e| format!("写入 .env 文件失败: {}", e))?;
+            // let home_dir = get_user_home_dir().map_err(|e| format!("获取用户主目录失败: {}", e))?;
             
             // 生成结果消息
-            let mut result_message = format!("环境变量已成功写入到 {}\n", env_file_path.display());
+            let mut result_message = format!("环境变量已成功写入\n");
             result_message.push_str(&format!("成功保存 {} 个服务器配置\n", success_count));
             
             if !error_messages.is_empty() {
@@ -240,4 +203,28 @@ pub fn parse_mcp_config(config: &str) -> Result<String, String> {
         },
         Err(e) => Err(format!("JSON 解析失败: {}", e))
     }
+}
+
+// 获取用户主目录，根据不同操作系统返回相应的路径
+fn get_user_home_dir() -> Result<path::PathBuf, String> {
+    if let Some(home_dir) = dirs::home_dir() {
+        Ok(home_dir)
+    } else {
+        Err("无法获取用户主目录".to_string())
+    }
+}
+
+fn get_mcp_server_dir(server_name: &str) -> Result<path::PathBuf, String> {
+    let home_dir = get_user_home_dir()?;
+    let server_dir = home_dir.join(".omni-mcp").join("mcpServer").join(server_name);
+    Ok(server_dir)
+}
+// 创建MCP服务器目录
+#[allow(dead_code)]
+pub fn create_mcp_server_dir(server_name: &str) -> Result<path::PathBuf, String> {
+    let server_dir = get_mcp_server_dir(server_name)?;
+    std::fs::create_dir_all(&server_dir)
+        .map_err(|e| format!("创建服务器目录失败: {}", e))?;
+    
+    Ok(server_dir)
 }
