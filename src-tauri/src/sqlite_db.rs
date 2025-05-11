@@ -101,7 +101,6 @@ impl Database {
         Ok(())
     }
     
-    // 初始化MCP服务器配置表
     pub fn init_mcp_servers_table(&self) -> Result<()> {
         if !self.table_exists("mcpServers") {
             self.create_table(
@@ -109,9 +108,25 @@ impl Database {
                     server_name TEXT PRIMARY KEY,
                     command TEXT,
                     args TEXT,
-                    disabled BOOLEAN
+                    disabled BOOLEAN,
+                    pid INTEGER,
+                    install_dir TEXT,
+                    env TEXT
                 )"
             )?;
+        } else {
+            // 检查并添加新的列
+            let columns = [
+                ("install_dir", "TEXT"),
+                ("pid", "INTEGER"),
+                ("env", "TEXT")
+            ];
+            
+            for (column_name, column_type) in columns.iter() {
+                if !self.column_exists("mcpServers", column_name) {
+                    self.add_column("mcpServers", column_name, column_type)?;
+                }
+            }
         }
         Ok(())
     }
