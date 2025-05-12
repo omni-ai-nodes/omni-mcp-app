@@ -26,9 +26,67 @@ interface ModelConfig {
   modelOptions?: string[]; // 添加模型选项数组
 }
 
+// Define MCPClient class once at the top
+class MCPClient {
+  private servers: string[] = [];
+
+  async connectToServer(serverName: string) {
+    try {
+      // 暂时移除 Tauri 命令调用，使用模拟实现
+      this.servers.push(serverName);
+      console.log(`Connected to server: ${serverName}`);
+    } catch (error) {
+      console.error(`Failed to connect to server ${serverName}:`, error);
+      throw error;
+    }
+  }
+
+  async disconnect() {
+    try {
+      // 暂时移除 Tauri 命令调用，使用模拟实现
+      this.servers = [];
+      console.log('Disconnected from all servers');
+    } catch (error) {
+      console.error('Failed to disconnect:', error);
+      throw error;
+    }
+  }
+
+  async processQuery(query: string, callback: (content: string) => void) {
+    try {
+      if (this.servers.length === 0) {
+        callback('错误：未连接到任何 MCP 服务器');
+        return;
+      }
+
+      // 遍历所有已连接的服务器
+      for (const serverName of this.servers) {
+        try {
+          // 使用 execute_command 来处理查询
+          const response = await invoke('execute_command', {
+            cmd: 'mcp',
+            args: ['query', serverName, query]
+          });
+          
+          if (typeof response === 'string') {
+            callback(response);
+          } else {
+            console.error('意外的响应类型:', response);
+            callback('处理查询时出现错误：响应格式不正确');
+          }
+        } catch (serverError) {
+          console.error(`服务器 ${serverName} 处理查询失败:`, serverError);
+          callback(`服务器 ${serverName} 处理查询失败: ${serverError.message}`);
+        }
+      }
+    } catch (error) {
+      console.error('处理查询失败:', error);
+      callback(`处理查询时出现错误: ${error.message}`);
+    }
+  }
+}
+
 // 确保所有必要的变量和函数都已正确导出
-export const conversations = ref<Conversation[]>([])
-export const currentConversation = ref<Conversation | null>(null)
 export const newMessage = ref('');
 export const loading = ref(false);
 export const availableModels = ref(['openai', 'ollama']); // 改为响应式数组
@@ -39,13 +97,43 @@ export const eventSource = ref<EventSource | null>(null);
 export const modelOptions = ref<Record<string, string[]>>({});
 export const selectedModelOption = ref<string>('');
 
-export const mcpServers = ref([]);
-export const selectedMcpServers = ref([]); // Example definition
-
+// 添加或确保这些变量的声明
+export const mcpClient = ref<MCPClient | null>(null);
+export const mcpServers = ref<string[]>([]);
+export const selectedMcpServers = ref<string[]>([]);
+export const isMcpConnected = ref(false);
+export const mcpLoading = ref(false);
+export const conversations = ref<Conversation[]>([]);
+export const currentConversation = ref<Conversation | null>(null);
 // 添加新的函数用于保存模型状态
 export function saveModelState() {
   localStorage.setItem('currentModel', currentModel.value);
   localStorage.setItem('selectedModelOption', selectedModelOption.value);
+}
+
+export async function initMcpClient() {
+  try {
+    mcpLoading.value = true;
+    // Initialize any MCP-related setup here
+    await loadMcpServers(); // Reload server list
+    mcpLoading.value = false;
+
+    // If mcpClient is already initialized, return
+    if (mcpClient.value) {
+      console.log('MCP client already initialized');
+      return;
+    }
+    
+    console.log('Initializing MCP client...');
+    // Create a new instance of MCPClient
+    mcpClient.value = new MCPClient();
+    
+    console.log('MCP client initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize MCP client:', error);
+    mcpLoading.value = false;
+    throw error; // Rethrow the error to handle it in the calling code
+  }
 }
 
 // 加载自定义模型配置
@@ -220,6 +308,57 @@ export async function sendMessage() {
     // 关闭之前的连接
     closeEventSource();
     
+    // 如果有选中的 MCP 服务器，则使用 MCP 客户端处理消息
+    if (selectedMcpServers.value.length > 0 && mcpClient.value) {
+      try {
+        // 连接到 MCP 服务器（如果尚未连接）
+        // 如果选择了MCP服务器，使用MCP客户端处理查询
+        if (mcpClient.value && selectedMcpServers.value.length > 0) {
+              // 如果未连接，先尝试连接
+              if (!isMcpConnected.value) {
+                await connectToMcpServers();
+            }
+          }
+        
+        // 使用 MCPClient 处理查询，传入回调函数用于处理消息
+        const result = await mcpClient.value.processQuery(
+          newMessage.value,
+          async (content: string) => {
+            // 这里处理 MCP 服务器返回的消息
+            const assistantMessage: Message = {
+              id: Date.now().toString(),
+              content: content,
+              role: 'assistant',
+              timestamp: Date.now()
+            };
+            currentConversation.value?.messages.push(assistantMessage);
+            saveConversations();
+            scrollToBottom();
+          }
+        );
+        
+        // 清空输入框
+        newMessage.value = '';
+        
+      } catch (error) {
+        console.error('MCP 处理消息失败:', error);
+        // 添加错误消息
+        const errorMessage: Message = {
+          id: Date.now().toString(),
+          content: `处理消息时出错: ${error.message}`,
+          role: 'assistant',
+          timestamp: Date.now()
+        };
+        currentConversation.value?.messages.push(errorMessage);
+        saveConversations();
+      }
+      
+      // 这里需要添加 return 语句，防止继续执行下面的代码
+      loading.value = false;
+      return;
+    }
+  
+    // 原有的消息处理逻辑
     const config = currentModelConfig.value;
     // 使用选定的模型选项，如果没有则使用默认模型
     const modelName = selectedModelOption.value || config.model;
@@ -442,7 +581,9 @@ export function isThinkExpanded(messageId: string): boolean {
 // 在 processMessageContent 函数中添加格式化处理
 export function processMessageContent(msg: Message): { normalContent: string, thinkContent: string | null } {
   let content = msg.content;
-  
+  if (!hasThinkTag(content)) {
+    return { normalContent: content, thinkContent: null };
+  }
   // 处理数学公式块
   content = content.replace(/\$\$(.*?)\$\$/g, (match, formula) => {
     return `\n${formula.trim()}\n`;
@@ -524,3 +665,41 @@ export function processMessageContent(msg: Message): { normalContent: string, th
     thinkContent: thinkContent || null 
   };
 }
+
+// 连接到选定的MCP服务器
+export const connectToMcpServers = async () => {
+  if (!mcpClient.value) return;
+  
+  mcpLoading.value = true;
+  try {
+    // 断开所有连接
+    await mcpClient.value.disconnect();
+    isMcpConnected.value = false; // 重置连接状态
+    
+    // 连接到选定的服务器
+    for (const serverName of selectedMcpServers.value) {
+      await mcpClient.value.connectToServer(serverName);
+    }
+    
+    isMcpConnected.value = true; // 设置连接状态为已连接
+  } catch (error) {
+    console.error('连接MCP服务器失败:', error);
+    isMcpConnected.value = false; // 连接失败时重置状态
+  } finally {
+    mcpLoading.value = false;
+  }
+};
+
+
+// 断开MCP连接
+export const disconnectMcp = async () => {
+  if (mcpClient.value) {
+    try {
+      await mcpClient.value.disconnect();
+      isMcpConnected.value = false;
+    } catch (error) {
+      console.error('断开MCP连接失败:', error);
+    }
+  }
+};
+

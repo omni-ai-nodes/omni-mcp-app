@@ -11,8 +11,6 @@ import {
   eventSource,
   modelOptions,
   selectedModelOption,
-  mcpServers,
-  selectedMcpServers, // Ensure this is correctly imported
   expandedThinks,
   saveModelState,
   loadCustomConfigs,
@@ -30,9 +28,17 @@ import {
   formatThinkContent,
   toggleThink,
   isThinkExpanded,
-  processMessageContent
+  mcpClient,
+  mcpServers,
+  selectedMcpServers,
+  isMcpConnected,  // Make sure this is included
+  processMessageContent,  // Add this import
+  initMcpClient,         // Add this import
+  mcpLoading,      // Add this import  processMessageContent
+  connectToMcpServers,  // 添加这一行
+  disconnectMcp,        // 添加这一行
 } from './GreeterChat.ts';
-import { onMounted as vueOnMounted } from 'vue'
+import { onMounted as vueOnMounted, onUnmounted } from 'vue'
 
 // 组件挂载时初始化
 // 从本地存储加载对话记录
@@ -51,6 +57,14 @@ vueOnMounted(async () => {
       currentConversation.value = conversations.value[0];
     }
   }
+  
+  // 初始化 MCP 客户端
+  await initMcpClient();
+})
+
+// 组件卸载时断开 MCP 连接
+onUnmounted(() => {
+  disconnectMcp();
 })
 </script>
 
@@ -166,6 +180,14 @@ vueOnMounted(async () => {
               <label :for="server.server_name">{{ server.server_name }}</label>
             </div>
           </div>
+          <div v-if="selectedMcpServers.length > 0" class="mcp-connect-button">
+          <button 
+            @click="connectToMcpServers" 
+            :disabled="isMcpConnected || mcpLoading"
+          >
+            {{ mcpLoading ? '连接中...' : (isMcpConnected ? '已连接' : '连接') }}
+          </button>
+        </div>
         </div>
         <div class="message-input">
           <textarea
