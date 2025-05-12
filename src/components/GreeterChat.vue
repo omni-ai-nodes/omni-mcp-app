@@ -37,6 +37,7 @@ import {
   mcpLoading,      // Add this import  processMessageContent
   connectToMcpServers,  // 添加这一行
   disconnectMcp,        // 添加这一行
+  stopSending,
 } from './GreeterChat.ts';
 import { onMounted as vueOnMounted, onUnmounted } from 'vue'
 
@@ -197,10 +198,10 @@ onUnmounted(() => {
             :disabled="loading"
           ></textarea>
           <button 
-            @click="sendMessage" 
-            :disabled="loading || !newMessage.trim() || !currentConversation || !currentModelConfig"
+            @click="loading ? stopSending() : sendMessage()" 
+            :disabled="(!newMessage.trim() || !currentConversation || !currentModelConfig) && !loading"
           >
-            {{ loading ? '发送中...' : '发送' }}
+            {{ loading ? '停止' : '发送' }}
           </button>
         </div>
       </div>

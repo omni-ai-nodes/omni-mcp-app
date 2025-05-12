@@ -86,6 +86,9 @@ class MCPClient {
   }
 }
 
+// 在 sendMessage 函数中添加中止控制器
+let abortController = new AbortController();
+
 // 确保所有必要的变量和函数都已正确导出
 export const newMessage = ref('');
 export const loading = ref(false);
@@ -305,6 +308,17 @@ export async function sendMessage() {
   streamingContent.value = '';
   
   try {
+
+    abortController = new AbortController(); // 每次发送新建控制器
+    
+    // 修改这里：使用 currentModelConfig.value 替代 modelConfig
+    const mcpResponse = await fetch(`${currentModelConfig.value.api_url}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: userMessage.content }),
+      signal: abortController.signal // 绑定中止信号
+    });
+
     // 关闭之前的连接
     closeEventSource();
     
@@ -424,7 +438,8 @@ export async function sendMessage() {
     const response = await fetch(sseUrl, {
       method: 'POST',
       headers: headers,
-      body: body
+      body: body,
+      signal: abortController.signal  // 添加中止信号到 SSE 请求
     });
     
     if (!response.ok) {
@@ -507,40 +522,33 @@ export async function sendMessage() {
       }
     }
   } catch (error) {
-    console.error('发送消息失败:', error);
-    // 如果 SSE 失败，回退到普通的 API 调用
-    try {
-      const response = await invoke('chat_with_model', { 
-        message: userMessage.content,
-        model: currentConversation.value.model
-      });
-      
-      // 更新最后一条消息的内容
-      if (currentConversation.value.messages.length > 0) {
+    if (error.name === 'AbortError') {
+      console.log('用户中止了请求');
+      // 添加中断消息到对话
+      if (currentConversation.value?.messages.length > 0) {
         const lastMessage = currentConversation.value.messages[currentConversation.value.messages.length - 1];
         if (lastMessage.role === 'assistant') {
-          lastMessage.content = response as string;
-        } else {
-          // 如果最后一条不是助手消息，则添加新消息
-          const assistantMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            content: response as string,
-            role: 'assistant',
-            timestamp: Date.now()
-          };
-          currentConversation.value.messages.push(assistantMessage);
+          lastMessage.content += '\n[用户中止]';
         }
       }
-    } catch (fallbackError) {
-      console.error('回退到普通 API 调用也失败:', fallbackError);
+    } else {
+      console.error('发送消息失败:', error);
+      // 添加错误消息到对话
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        content: `发送消息失败: ${error.message}`,
+        role: 'assistant',
+        timestamp: Date.now()
+      };
+      currentConversation.value?.messages.push(errorMessage);
     }
   } finally {
     loading.value = false;
     saveConversations();
-    // 消息发送完成后再次滚动到底部，直接调用 scrollToBottom
     scrollToBottom();
   }
 }
+
 
 // 用于跟踪哪些思考内容被展开
 export const expandedThinks = ref<Set<string>>(new Set());
@@ -703,3 +711,14 @@ export const disconnectMcp = async () => {
   }
 };
 
+export function stopSending() {
+  if (abortController) {
+    abortController.abort(); // 中止请求
+  }
+  // 关闭 SSE 连接
+  if (eventSource.value) {
+    eventSource.value.close();
+    eventSource.value = null;
+  }
+  loading.value = false;
+}
