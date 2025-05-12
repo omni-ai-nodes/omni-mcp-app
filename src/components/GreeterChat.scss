@@ -130,14 +130,40 @@ box-shadow: 0 2px 4px var(--shadow-color);
 }
 
 @media (prefers-color-scheme: dark) {
-:root {
-    --bg-color: #2d2d2d;
-    --border-color: #404040;
-    --text-color: #e0e0e0;
-    --user-bg: #3a5ab3;
-    --assistant-bg: #333333;
-    --shadow-color: rgba(0,0,0,0.2);
-}
+    :root {
+        --bg-color: #2d2d2d;
+        --border-color: #404040;
+        --text-color: #e0e0e0;
+        --user-bg: #3a5ab3;
+        --assistant-bg: #333333;
+        --shadow-color: rgba(0,0,0,0.2);
+    }
+    .input-area {
+        background-color: #1a1a1a;
+        border-top-color: #333;
+    }
+    .mcp-servers-selector {
+        background-color: #2a2a2a;
+        border-color: #404040;
+    }
+    
+    .mcp-servers-title {
+        color: #a0a0a0;
+    }
+    
+    .mcp-server-item {
+        background-color: #333333;
+        border-color: #404040;
+        
+        &:hover {
+            background-color: #404040;
+            border-color: #505050;
+        }
+        
+        label {
+            color: #e0e0e0;
+        }
+    }
 }
 .model-option-item {
 display: flex;
@@ -440,26 +466,27 @@ font-weight: bold;
 }
 
 .input-area {
-display: flex;
-flex-direction: column;
-gap: 12px;
-padding: 16px;
-border-top: 1px solid #e0e0e0;
-background-color: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+    transition: background-color 0.3s ease;
 }
 
 .mcp-servers-selector {
-background-color: #f8f9fa;
-border: 1px solid #e0e0e0;
-border-radius: 6px;
-padding: 12px;
+    // background-color: #f8f9fa;
+    // border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 12px;
 }
 
 .mcp-servers-title {
-font-size: 14px;
-color: #666;
-margin-bottom: 8px;
-font-weight: 500;
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 8px;
+    font-weight: 500;
 }
 
 .mcp-servers-selector {
