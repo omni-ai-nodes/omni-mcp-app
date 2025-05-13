@@ -96,7 +96,7 @@ pub async fn get_all_mcp_servers(is_active: Option<bool>) -> Result<Vec<McpServe
     // 根据 is_active 参数构建 SQL 查询
     let sql = match is_active {
         Some(_active) => format!(
-            "SELECT name, command, args, is_active, env, description, type, base_url FROM {} WHERE is_active = ?",
+            "SELECT name, command, args, is_active, env, description, type, base_url FROM {} WHERE is_active = '?'",
             TABLE_NAME
         ),
         None => format!(
@@ -104,7 +104,7 @@ pub async fn get_all_mcp_servers(is_active: Option<bool>) -> Result<Vec<McpServe
             TABLE_NAME
         ),
     };
-    
+    println!("get_all_mcp_servers: {}", sql);
     let mut stmt = match conn.prepare(&sql) {
         Ok(stmt) => stmt,
         Err(e) => {
