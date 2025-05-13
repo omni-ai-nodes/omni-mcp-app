@@ -169,16 +169,16 @@ onUnmounted(() => {
             <div class="mcp-servers-label">MCP Server:</div>
             <div 
               v-for="server in mcpServers" 
-              :key="server.server_name"
+              :key="server.name"
               class="mcp-server-item"
             >
               <input 
                 type="checkbox"
-                :id="server.server_name"
-                :value="server.server_name"
+                :id="server.name"
+                :value="server.name"
                 v-model="selectedMcpServers"
               >
-              <label :for="server.server_name">{{ server.server_name }}</label>
+              <label :for="server.name">{{ server.name }}</label>
             </div>
           </div>
           <div v-if="selectedMcpServers.length > 0" class="mcp-connect-button">

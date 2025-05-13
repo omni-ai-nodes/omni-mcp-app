@@ -105,13 +105,13 @@ impl Database {
         if !self.table_exists("mcpServers") {
             self.create_table(
                 "CREATE TABLE mcpServers (
-                    server_name TEXT PRIMARY KEY,
+                    name TEXT PRIMARY KEY,
                     description TEXT,
-                    type_ TEXT,
+                    type TEXT,
                     base_url TEXT,
                     command TEXT,
                     args TEXT,
-                    disabled BOOLEAN,
+                    is_active BOOLEAN,
                     pid INTEGER,
                     install_dir TEXT,
                     env TEXT

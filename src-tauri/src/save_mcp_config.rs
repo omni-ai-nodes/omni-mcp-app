@@ -7,15 +7,18 @@ use crate::sqlite_db::Database;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct McpServerConfig {
-    pub server_name: String,
-    pub description: Option<String>,  // 添加描述字段
-    pub type_: Option<String>,        // 添加类型字段，使用 type_ 避免与 Rust 关键字冲突
-    pub base_url: Option<String>,     // 修改为 snake_case
+    #[serde(rename = "name")]
+    pub name: String,
+    pub description: Option<String>,
     pub command: String,
     pub args: Vec<String>,
-    pub disabled: bool,
+    #[serde(rename = "isActive")]
+    pub is_active: bool,  // Changed from isActive to is_active
     pub env: Option<Value>,
-
+    #[serde(rename = "type")]
+    pub type_: Option<String>,
+    #[serde(rename = "baseUrl")]
+    pub base_url: Option<String>,
 }
 
 fn get_db() -> Result<Database, String> {
@@ -38,7 +41,7 @@ pub fn save_mcp_server_config(config: McpServerConfig) -> Result<(), String> {
     
     // 定义 insert_sql 变量
     let insert_sql = format!(
-        "INSERT OR REPLACE INTO {} (server_name, command, args, disabled, env, description, type_, base_url) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        "INSERT OR REPLACE INTO {} (name, command, args, is_active, env, description, type, base_url) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         TABLE_NAME
     );
     
@@ -58,10 +61,10 @@ pub fn save_mcp_server_config(config: McpServerConfig) -> Result<(), String> {
     let result = conn.execute(
         &insert_sql,
         [
-            &config.server_name,
+            &config.name,
             &config.command,
             &args_json,
-            &config.disabled.to_string(),
+            &(!config.is_active).to_string(), // Changed from isActive to is_active
             &env_json,
             &description,
             &type_,
@@ -90,7 +93,8 @@ pub async fn get_all_mcp_servers() -> Result<Vec<McpServerConfig>, String> {
     
     let conn = db.get_connection();
     
-    let mut stmt = match conn.prepare("SELECT server_name, command, args, disabled, env FROM mcpServers") {
+    // 修改 SQL 查询，使用新的列名
+    let mut stmt = match conn.prepare("SELECT name, command, args, is_active, env, description, type, base_url FROM mcpServers") {
         Ok(stmt) => stmt,
         Err(e) => {
             let error_msg = format!("准备查询语句失败: {}", e);
@@ -100,11 +104,14 @@ pub async fn get_all_mcp_servers() -> Result<Vec<McpServerConfig>, String> {
     };
     
     let rows = stmt.query_map([], |row| {
-        let server_name: String = row.get(0)?;
+        let name: String = row.get(0)?;
         let command: String = row.get(1)?;
         let args_json: String = row.get(2)?;
-        let disabled: String = row.get(3)?;
+        let is_active: String = row.get(3)?;
         let env_json: String = row.get(4)?;
+        let description: Option<String> = row.get(5).ok();
+        let type_: Option<String> = row.get(6).ok();
+        let base_url: Option<String> = row.get(7).ok();
         
         let args: Vec<String> = serde_json::from_str(&args_json)
             .map_err(|e| rusqlite::Error::FromSqlConversionFailure(
@@ -125,14 +132,14 @@ pub async fn get_all_mcp_servers() -> Result<Vec<McpServerConfig>, String> {
         };
         
         Ok(McpServerConfig {
-            server_name,
+            name,
             command,
             args,
-            disabled: disabled.parse().unwrap_or(false),
+            is_active: is_active.parse().unwrap_or(true),  // 注意这里不需要取反
             env,
-            description: None,  // 添加默认值 None
-            type_: None,        // 添加默认值 None
-            base_url: None,     // 修改为 base_url 以匹配结构体定义
+            description,
+            type_,
+            base_url,
         })
     }).map_err(|e| e.to_string())?;
     
@@ -172,7 +179,7 @@ pub fn parse_mcp_config(config: &str) -> Result<String, String> {
                      let conn = db.get_connection();
                     
                      let exists: bool = conn.query_row(
-                        "SELECT 1 FROM mcpServers WHERE server_name = ?",
+                        "SELECT 1 FROM mcpServers WHERE name = ?",
                         [server_name],
                         |_| Ok(true)
                     ).unwrap_or(false);
@@ -207,14 +214,14 @@ pub fn parse_mcp_config(config: &str) -> Result<String, String> {
                             .unwrap_or(false);
                             
                         let config = McpServerConfig {
-                            server_name: server_name.clone(),
+                            name: server_name.clone(),
                             command: command.to_string(),
                             args,
-                            disabled,
+                            is_active: !disabled, // Note: inverted logic
                             env: server_config.get("env").cloned(),
                             description: server_config.get("description").and_then(|v| v.as_str()).map(String::from),
                             type_: server_config.get("type").and_then(|v| v.as_str()).map(String::from),
-                            base_url: server_config.get("baseUrl").and_then(|v| v.as_str()).map(String::from),  // 注意这里仍然从 JSON 的 "baseUrl" 字段读取
+                            base_url: server_config.get("baseUrl").and_then(|v| v.as_str()).map(String::from),
                         };
 
                         let result = if exists {
@@ -291,7 +298,7 @@ pub fn update_mcp_server_config(config: McpServerConfig) -> Result<(), String> {
     };
     
     let update_sql = format!(
-        "UPDATE {} SET command = ?1, args = ?2, disabled = ?3, env = ?4 WHERE server_name = ?5",
+        "UPDATE {} SET command = ?1, args = ?2, is_active = ?3, env = ?4 WHERE name = ?5",
         TABLE_NAME
     );
     
@@ -302,9 +309,9 @@ pub fn update_mcp_server_config(config: McpServerConfig) -> Result<(), String> {
         [
             &config.command,
             &args_json,
-            &config.disabled.to_string(),
+            &(!config.is_active).to_string(), // Note: inverted logic
             &env_json,
-            &config.server_name,
+            &config.name,
         ],
     );
 
@@ -327,7 +334,7 @@ pub fn count_mcp_server_config(server_name: &str) -> Result<i32, String> {
     let conn = db.get_connection();
     
     let count: i32 = conn.query_row(
-        &format!("SELECT COUNT(*) FROM {} WHERE server_name = ?", TABLE_NAME),
+        &format!("SELECT COUNT(*) FROM {} WHERE name = ?", TABLE_NAME),
         [server_name],
         |row| row.get(0)
     ).map_err(|e| format!("查询服务器配置数量失败: {}", e))?;
@@ -335,7 +342,6 @@ pub fn count_mcp_server_config(server_name: &str) -> Result<i32, String> {
     println!("服务器 {} 的配置数量: {}", server_name, count);
     Ok(count)
 }
-
 
 #[allow(dead_code)]
 pub fn delete_mcp_server_config(server_name: String) -> Result<(), String> {
@@ -345,7 +351,7 @@ pub fn delete_mcp_server_config(server_name: String) -> Result<(), String> {
     let conn = db.get_connection();
     
     match conn.execute(
-        &format!("DELETE FROM {} WHERE server_name = ?", TABLE_NAME),
+        &format!("DELETE FROM {} WHERE name = ?", TABLE_NAME),
         [&server_name],
     ) {
         Ok(_) => {

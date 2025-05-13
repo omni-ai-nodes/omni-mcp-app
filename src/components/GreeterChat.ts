@@ -26,6 +26,26 @@ interface ModelConfig {
   modelOptions?: string[]; // 添加模型选项数组
 }
 
+// 添加或确保这些变量的声明
+export const mcpClient = ref<MCPClient | null>(null);
+// 添加 McpServer 接口定义
+interface McpServer {
+  name: string;
+  description: string;
+  command: string;
+  args: string[];
+  isActive: boolean;
+  env: Record<string, any>;
+  type: string;
+  baseUrl: string;
+}
+export const mcpServers = ref<McpServer[]>([]);
+export const selectedMcpServers = ref<string[]>([]);
+export const isMcpConnected = ref(false);
+export const mcpLoading = ref(false);
+export const conversations = ref<Conversation[]>([]);
+export const currentConversation = ref<Conversation | null>(null);
+
 // Define MCPClient class once at the top
 class MCPClient {
   private servers: string[] = [];
@@ -100,14 +120,6 @@ export const eventSource = ref<EventSource | null>(null);
 export const modelOptions = ref<Record<string, string[]>>({});
 export const selectedModelOption = ref<string>('');
 
-// 添加或确保这些变量的声明
-export const mcpClient = ref<MCPClient | null>(null);
-export const mcpServers = ref<string[]>([]);
-export const selectedMcpServers = ref<string[]>([]);
-export const isMcpConnected = ref(false);
-export const mcpLoading = ref(false);
-export const conversations = ref<Conversation[]>([]);
-export const currentConversation = ref<Conversation | null>(null);
 // 添加新的函数用于保存模型状态
 export function saveModelState() {
   localStorage.setItem('currentModel', currentModel.value);
@@ -185,9 +197,9 @@ export const currentModelConfig = computed(() => {
 });
 
 // 加载 MCP 服务器列表
-export  async function loadMcpServers() {
+export async function loadMcpServers() {
   try {
-    const servers = await invoke('get_all_mcp_servers');
+    const servers = await invoke('get_all_mcp_servers') as McpServer[];
     mcpServers.value = servers;
   } catch (error) {
     console.error('加载MCP服务器列表失败:', error);
