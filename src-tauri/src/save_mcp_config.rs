@@ -64,7 +64,7 @@ pub fn save_mcp_server_config(config: McpServerConfig) -> Result<(), String> {
             &config.name,
             &config.command,
             &args_json,
-            &(!config.is_active).to_string(), // Changed from isActive to is_active
+            &config.is_active.to_string(), // 不再取反
             &env_json,
             &description,
             &type_,
@@ -94,17 +94,19 @@ pub async fn get_all_mcp_servers(is_active: Option<bool>) -> Result<Vec<McpServe
     let conn = db.get_connection();
     
     // 根据 is_active 参数构建 SQL 查询
+    println!("is_active: {:?}", is_active);  // Use the debug formatter {:?} for Option types
     let sql = match is_active {
-        Some(_active) => format!(
-            "SELECT name, command, args, is_active, env, description, type, base_url FROM {} WHERE is_active = '?'",
-            TABLE_NAME
+        Some(active) => format!(
+            "SELECT name, command, args, is_active, env, description, type, base_url FROM {} WHERE is_active = '{}'",
+            TABLE_NAME,
+            active.to_string() // 不再取反
         ),
         None => format!(
             "SELECT name, command, args, is_active, env, description, type, base_url FROM {}",
             TABLE_NAME
         ),
     };
-    println!("get_all_mcp_servers: {}", sql);
+    println!("{}", sql);
     let mut stmt = match conn.prepare(&sql) {
         Ok(stmt) => stmt,
         Err(e) => {
@@ -155,13 +157,7 @@ pub async fn get_all_mcp_servers(is_active: Option<bool>) -> Result<Vec<McpServe
         })
     };
     
-    let rows = if let Some(active) = is_active {
-        // 将布尔值转换为与存储格式匹配的字符串
-        let active_str = (!active).to_string();
-        stmt.query_map([active_str], map_row)
-    } else {
-        stmt.query_map([], map_row)
-    }.map_err(|e| e.to_string())?;
+    let rows = stmt.query_map([], map_row).map_err(|e| e.to_string())?;
     
     let mut configs = Vec::new();
     for row in rows {
