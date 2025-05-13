@@ -130,7 +130,7 @@ export async function initMcpClient() {
   try {
     mcpLoading.value = true;
     // Initialize any MCP-related setup here
-    await loadMcpServers(); // Reload server list
+    await loadMcpServers(true); // Reload server list
     mcpLoading.value = false;
 
     // If mcpClient is already initialized, return
@@ -197,9 +197,9 @@ export const currentModelConfig = computed(() => {
 });
 
 // 加载 MCP 服务器列表
-export async function loadMcpServers() {
+export async function loadMcpServers(isActive?: boolean) {
   try {
-    const servers = await invoke('get_all_mcp_servers') as McpServer[];
+    const servers = await invoke('get_all_mcp_servers', { isActive }) as McpServer[];
     mcpServers.value = servers;
   } catch (error) {
     console.error('加载MCP服务器列表失败:', error);

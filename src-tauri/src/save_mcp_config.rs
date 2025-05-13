@@ -87,14 +87,25 @@ pub fn save_mcp_server_config(config: McpServerConfig) -> Result<(), String> {
 
 
 #[tauri::command]
-pub async fn get_all_mcp_servers() -> Result<Vec<McpServerConfig>, String> {
+pub async fn get_all_mcp_servers(is_active: Option<bool>) -> Result<Vec<McpServerConfig>, String> {
     let db = get_db()?;
     db.init_mcp_servers_table().map_err(|e| format!("初始化表失败: {}", e))?;
     
     let conn = db.get_connection();
     
-    // 修改 SQL 查询，使用新的列名
-    let mut stmt = match conn.prepare("SELECT name, command, args, is_active, env, description, type, base_url FROM mcpServers") {
+    // 根据 is_active 参数构建 SQL 查询
+    let sql = match is_active {
+        Some(_active) => format!(
+            "SELECT name, command, args, is_active, env, description, type, base_url FROM {} WHERE is_active = ?",
+            TABLE_NAME
+        ),
+        None => format!(
+            "SELECT name, command, args, is_active, env, description, type, base_url FROM {}",
+            TABLE_NAME
+        ),
+    };
+    
+    let mut stmt = match conn.prepare(&sql) {
         Ok(stmt) => stmt,
         Err(e) => {
             let error_msg = format!("准备查询语句失败: {}", e);
@@ -103,7 +114,8 @@ pub async fn get_all_mcp_servers() -> Result<Vec<McpServerConfig>, String> {
         }
     };
     
-    let rows = stmt.query_map([], |row| {
+    // Define the row mapping function outside the if-else block
+    let map_row = |row: &rusqlite::Row| -> rusqlite::Result<McpServerConfig> {
         let name: String = row.get(0)?;
         let command: String = row.get(1)?;
         let args_json: String = row.get(2)?;
@@ -135,13 +147,21 @@ pub async fn get_all_mcp_servers() -> Result<Vec<McpServerConfig>, String> {
             name,
             command,
             args,
-            is_active: is_active.parse().unwrap_or(true),  // 注意这里不需要取反
+            is_active: is_active.parse().unwrap_or(true),
             env,
             description,
             type_,
             base_url,
         })
-    }).map_err(|e| e.to_string())?;
+    };
+    
+    let rows = if let Some(active) = is_active {
+        // 将布尔值转换为与存储格式匹配的字符串
+        let active_str = (!active).to_string();
+        stmt.query_map([active_str], map_row)
+    } else {
+        stmt.query_map([], map_row)
+    }.map_err(|e| e.to_string())?;
     
     let mut configs = Vec::new();
     for row in rows {
