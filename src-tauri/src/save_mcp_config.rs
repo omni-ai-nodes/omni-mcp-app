@@ -8,10 +8,14 @@ use crate::sqlite_db::Database;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct McpServerConfig {
     pub server_name: String,
+    pub description: Option<String>,  // 添加描述字段
+    pub type_: Option<String>,        // 添加类型字段，使用 type_ 避免与 Rust 关键字冲突
+    pub base_url: Option<String>,     // 修改为 snake_case
     pub command: String,
     pub args: Vec<String>,
     pub disabled: bool,
-    pub env: Option<Value>, 
+    pub env: Option<Value>,
+
 }
 
 fn get_db() -> Result<Database, String> {
@@ -32,12 +36,11 @@ pub fn save_mcp_server_config(config: McpServerConfig) -> Result<(), String> {
     let args_json = serde_json::to_string(&config.args)
         .map_err(|e| format!("序列化args失败: {}", e))?;
     
-        let insert_sql = format!(
-            "INSERT OR REPLACE INTO {} (server_name, command, args, disabled, env) VALUES (?1, ?2, ?3, ?4, ?5)",
-            TABLE_NAME
-        );
-    
-        println!("执行SQL: {}", insert_sql);
+    // 定义 insert_sql 变量
+    let insert_sql = format!(
+        "INSERT OR REPLACE INTO {} (server_name, command, args, disabled, env, description, type_, base_url) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        TABLE_NAME
+    );
     
     // 将env转换为JSON字符串
     let env_json = if let Some(env) = config.env {
@@ -47,6 +50,10 @@ pub fn save_mcp_server_config(config: McpServerConfig) -> Result<(), String> {
         "{}".to_string()
     };
 
+    // 获取可选字段的值
+    let description = config.description.unwrap_or_default();
+    let type_ = config.type_.unwrap_or_default();
+    let base_url = config.base_url.unwrap_or_default();  // 修改为 snake_case
     
     let result = conn.execute(
         &insert_sql,
@@ -56,6 +63,9 @@ pub fn save_mcp_server_config(config: McpServerConfig) -> Result<(), String> {
             &args_json,
             &config.disabled.to_string(),
             &env_json,
+            &description,
+            &type_,
+            &base_url,
         ],
     );
 
@@ -120,6 +130,9 @@ pub async fn get_all_mcp_servers() -> Result<Vec<McpServerConfig>, String> {
             args,
             disabled: disabled.parse().unwrap_or(false),
             env,
+            description: None,  // 添加默认值 None
+            type_: None,        // 添加默认值 None
+            base_url: None,     // 修改为 base_url 以匹配结构体定义
         })
     }).map_err(|e| e.to_string())?;
     
@@ -199,6 +212,9 @@ pub fn parse_mcp_config(config: &str) -> Result<String, String> {
                             args,
                             disabled,
                             env: server_config.get("env").cloned(),
+                            description: server_config.get("description").and_then(|v| v.as_str()).map(String::from),
+                            type_: server_config.get("type").and_then(|v| v.as_str()).map(String::from),
+                            base_url: server_config.get("baseUrl").and_then(|v| v.as_str()).map(String::from),  // 注意这里仍然从 JSON 的 "baseUrl" 字段读取
                         };
 
                         let result = if exists {
@@ -256,8 +272,6 @@ pub fn parse_mcp_config(config: &str) -> Result<String, String> {
 }
 
 
-// ... existing code ...
-
 pub fn update_mcp_server_config(config: McpServerConfig) -> Result<(), String> {
     println!("更新配置: config={:?}", config);
     
@@ -307,6 +321,7 @@ pub fn update_mcp_server_config(config: McpServerConfig) -> Result<(), String> {
     }
 }
 
+#[allow(dead_code)]
 pub fn count_mcp_server_config(server_name: &str) -> Result<i32, String> {
     let db = get_db()?;
     let conn = db.get_connection();
@@ -322,6 +337,7 @@ pub fn count_mcp_server_config(server_name: &str) -> Result<i32, String> {
 }
 
 
+#[allow(dead_code)]
 pub fn delete_mcp_server_config(server_name: String) -> Result<(), String> {
     let db = get_db()?;
     db.init_mcp_servers_table().map_err(|e| format!("初始化表失败: {}", e))?;

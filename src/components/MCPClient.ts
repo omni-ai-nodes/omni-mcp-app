@@ -25,10 +25,6 @@ export class MCPClient {
     private sessions: Map<string, Client> = new Map();
     private transports: Map<string, StdioClientTransport | SSEClientTransport> = new Map();
 
-    constructor() {
-        // 移除 OpenAI 初始化
-    }
-
     async connectToServer(serverName: string): Promise<void> {
         const serverConfig = config.find(cfg => cfg.name === serverName) as ServerConfig;
         if (!serverConfig) {

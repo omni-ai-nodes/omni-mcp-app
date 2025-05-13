@@ -106,6 +106,9 @@ impl Database {
             self.create_table(
                 "CREATE TABLE mcpServers (
                     server_name TEXT PRIMARY KEY,
+                    description TEXT,
+                    type_ TEXT,
+                    base_url TEXT,
                     command TEXT,
                     args TEXT,
                     disabled BOOLEAN,
