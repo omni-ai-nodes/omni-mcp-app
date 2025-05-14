@@ -11,12 +11,17 @@ const toolsStatus = ref({
 
 const cmdOutput = ref("");
 const cmdError = ref("");
-const isLoading = ref(false);
+// 为每个工具创建独立的加载状态
+const loadingStatus = ref({
+  uv: false,
+  bun: false,
+  git: false
+});
 
 // 添加安装工具的方法
 async function installTool(tool: string) {
   try {
-    isLoading.value = true;
+    loadingStatus.value[tool as keyof typeof loadingStatus.value] = true;
     cmdError.value = ""; 
     cmdOutput.value = `正在安装 ${tool}...`;
     console.log(`开始安装 ${tool}...`);
@@ -31,7 +36,7 @@ async function installTool(tool: string) {
     cmdError.value = `安装失败: ${error}`;
     toolsStatus.value[tool as keyof typeof toolsStatus.value] = "安装失败";
   } finally {
-    isLoading.value = false;
+    loadingStatus.value[tool as keyof typeof loadingStatus.value] = false;
   }
 }
 
@@ -58,9 +63,9 @@ checkToolsStatus();
         <p>状态: {{ toolsStatus.uv }}</p>
         <button 
           @click="installTool('uv')"
-          :disabled="isLoading || toolsStatus.uv === '已安装'"
+          :disabled="loadingStatus.uv || toolsStatus.uv === '已安装'"
         >
-          {{ isLoading ? '安装中...' : (toolsStatus.uv === '已安装' ? '已安装' : '安装 UV') }}
+          {{ loadingStatus.uv ? '安装中...' : (toolsStatus.uv === '已安装' ? '已安装' : '安装 UV') }}
         </button>
       </div>
       <div class="tool-card">
@@ -68,9 +73,9 @@ checkToolsStatus();
         <p>状态: {{ toolsStatus.bun }}</p>
         <button 
           @click="installTool('bun')"
-          :disabled="isLoading || toolsStatus.bun === '已安装'"
+          :disabled="loadingStatus.bun || toolsStatus.bun === '已安装'"
         >
-          {{ isLoading ? '安装中...' : (toolsStatus.bun === '已安装' ? '已安装' : '安装 Bun') }}
+          {{ loadingStatus.bun ? '安装中...' : (toolsStatus.bun === '已安装' ? '已安装' : '安装 Bun') }}
         </button>
       </div>
       <div class="tool-card">
@@ -78,16 +83,16 @@ checkToolsStatus();
         <p>状态: {{ toolsStatus.git }}</p>
         <button 
           @click="installTool('git')"
-          :disabled="isLoading || toolsStatus.git === '已安装'"
+          :disabled="loadingStatus.git || toolsStatus.git === '已安装'"
         >
-          {{ isLoading ? '安装中...' : (toolsStatus.git === '已安装' ? '已安装' : '安装 Git') }}
+          {{ loadingStatus.git ? '安装中...' : (toolsStatus.git === '已安装' ? '已安装' : '安装 Git') }}
         </button>
       </div>
     </div>
     
     <div class="output-container">
       <h3>执行结果</h3>
-      <div v-if="isLoading" class="loading">命令执行中...</div>
+      <div v-if="Object.values(loadingStatus).some(status => status)" class="loading">命令执行中...</div>
       <pre v-if="cmdOutput" class="cmd-output">{{ cmdOutput }}</pre>
       <pre v-if="cmdError" class="cmd-error">{{ cmdError }}</pre>
     </div>

@@ -20,32 +20,56 @@ impl Tool {
     
     // 检查工具是否已安装
     fn check_installed(&self) -> bool {
-        let output = if cfg!(target_os = "windows") {
-            Command::new("where")
-                .arg(self.name())
-                .output()
+        if cfg!(target_os = "windows") {
+            match self {
+                Tool::Git => {
+                    // Git 使用 where 命令检查
+                    Command::new("where")
+                        .arg(self.name())
+                        .output()
+                        .map_or(false, |output| output.status.success())
+                },
+                Tool::Bun => {
+                    // 检查 Bun 的安装目录
+                    let home = std::env::var("USERPROFILE").unwrap_or_default();
+                    let bun_path = format!("{}/.bun/bin/bun.exe", home);
+                    std::path::Path::new(&bun_path).exists()
+                },
+                Tool::Uv => {
+                    // 检查 UV 的安装目录
+                    let home = std::env::var("USERPROFILE").unwrap_or_default();
+                    let uv_path = format!("{}/.local/bin/uv.exe", home);
+                    std::path::Path::new(&uv_path).exists()
+                },
+            }
         } else {
+            // Unix 系统保持原样
             Command::new("which")
                 .arg(self.name())
                 .output()
-        };
-
-        match output {
-            Ok(output) => output.status.success(),
-            Err(_) => false,
+                .map_or(false, |output| output.status.success())
         }
     }
 
     // 获取 UV 最新版本号
     fn get_uv_latest_version() -> Result<String, String> {
         println!("正在获取 UV 最新版本号...");
-        let output = Command::new("curl")
-            .args([
-                "-s",
-                "https://api.github.com/repos/astral-sh/uv/releases/latest"
-            ])
-            .output()
-            .map_err(|e| format!("获取UV版本失败: {}", e))?;
+        let mut command = Command::new("curl");
+        command.args([
+            "-s",
+            "-L", // 添加跟随重定向
+            "--connect-timeout", "10", // 添加超时设置
+            "https://api.github.com/repos/astral-sh/uv/releases/latest"
+        ]);
+
+          // 如果存在系统代理，添加代理支持
+        if let Ok(proxy) = std::env::var("HTTPS_PROXY").or_else(|_| std::env::var("https_proxy")) {
+            command.args(["--proxy", &proxy]);
+        }
+
+        let output = command
+        .output()
+        .map_err(|e| format!("获取UV版本失败: {}", e))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         // println!("GitHub API 响应:\n{}", stdout);
@@ -74,7 +98,6 @@ impl Tool {
         if cfg!(target_os = "windows") {
             match self {
                 Tool::Uv => {
-                    // 先获取版本号
                     match Self::get_uv_latest_version() {
                         Ok(version) => {
                             println!("成功获取 UV 最新版本: {}", version);
@@ -84,8 +107,29 @@ impl Tool {
                                     "-ExecutionPolicy".to_string(),
                                     "Bypass".to_string(),
                                     "-c".to_string(),
-                                    format!("irm https://github.com/astral-sh/uv/releases/download/{}/uv-installer.ps1 | iex",
-                                        version),
+                                    format!(
+                                        "$ErrorActionPreference = 'Stop';
+                                        Write-Host '正在下载 UV 安装脚本...';
+                                        $progressPreference = 'silentlyContinue';
+                                        curl.exe -L -s -o uv-installer.ps1 https://github.com/astral-sh/uv/releases/download/{}/uv-installer.ps1;
+                                        if ($LastExitCode -eq 0) {{
+                                            Write-Host '开始安装 UV...';
+                                            $env:UV_INSTALL_QUIET = 1;
+                                            .\\uv-installer.ps1;
+                                            if ($LastExitCode -eq 0) {{
+                                                Write-Host '正在更新环境变量...';
+                                                $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'User') + ';' + $env:USERPROFILE + '\\.local\\bin';
+                                                [System.Environment]::SetEnvironmentVariable('Path', $env:Path, 'User');
+                                                Write-Host 'UV 安装成功！';
+                                                Remove-Item uv-installer.ps1;
+                                            }} else {{
+                                                throw 'UV 安装失败'
+                                            }}
+                                        }} else {{
+                                            throw '下载安装脚本失败'
+                                        }}",
+                                        version
+                                    ),
                                 ]
                             ))
                         },
@@ -95,31 +139,65 @@ impl Tool {
                 Tool::Bun => Ok((
                     "powershell".to_string(),
                     vec![
+                        "-ExecutionPolicy".to_string(),
+                        "Bypass".to_string(),
                         "-c".to_string(),
-                        "irm bun.sh/install.ps1 | iex".to_string()
+                        "$ErrorActionPreference = 'Stop';
+                        Write-Host '正在下载 Bun 安装脚本...';
+                        $progressPreference = 'silentlyContinue';
+                        curl.exe -L -s -o bun-installer.ps1 https://bun.sh/install.ps1;
+                        if ($LastExitCode -eq 0) {
+                            Write-Host '开始安装 Bun...';
+                            $BunRoot = \"$env:USERPROFILE\\.bun\";
+                            $env:BUN_INSTALL = $BunRoot;
+                            .\\bun-installer.ps1;
+                            if ($LastExitCode -eq 0) {
+                                Write-Host '正在更新环境变量...';
+                                $BunBinPath = \"$BunRoot\\bin\";
+                                $CurrentPath = [System.Environment]::GetEnvironmentVariable('Path', 'User');
+                                if (-not ($CurrentPath -like \"*$BunBinPath*\")) {
+                                    $NewPath = \"$CurrentPath;$BunBinPath\";
+                                    [System.Environment]::SetEnvironmentVariable('Path', $NewPath, 'User');
+                                }
+                                Write-Host '清理安装文件...';
+                                Remove-Item bun-installer.ps1;
+                                Write-Host 'Bun 安装成功！'
+                            } else {
+                                throw 'Bun 安装失败'
+                            }
+                        } else {
+                            throw '下载安装脚本失败'
+                        }".to_string(),
                     ]
                 )),
-                Tool::Git => {
-                    if cfg!(target_os = "macos") {
-                        Ok((
-                            "brew".to_string(),
-                            vec![
-                                "install".to_string(),
-                                "git".to_string()
-                            ]
-                        ))
-                    } else {
-                        // Linux
-                        Ok((
-                            "apt-get".to_string(),
-                            vec![
-                                "install".to_string(),
-                                "-y".to_string(),
-                                "git".to_string()
-                            ]
-                        ))
-                    }
-                },
+                Tool::Git => Ok((
+                    "powershell".to_string(),
+                    vec![
+                        "-ExecutionPolicy".to_string(),
+                        "Bypass".to_string(),
+                        "-c".to_string(),
+                        "$ErrorActionPreference = 'Stop';
+                        Write-Host '正在下载 Git 安装程序...';
+                        $progressPreference = 'silentlyContinue';
+                        curl.exe -L -s -o git-installer.exe https://github.com/git-for-windows/git/releases/download/v2.43.0.windows.1/Git-2.43.0-64-bit.exe;
+                        if ($LastExitCode -eq 0) {
+                            Write-Host '开始安装 Git...';
+                            .\\git-installer.exe /VERYSILENT /NORESTART /COMPONENTS='icons,ext\\reg\\shellhere,assoc,assoc_sh';
+                            if ($LastExitCode -eq 0) {
+                                Write-Host '正在更新环境变量...';
+                                $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine');
+                                [System.Environment]::SetEnvironmentVariable('Path', $env:Path, 'Machine');
+                                Write-Host '清理安装文件...';
+                                Remove-Item git-installer.exe;
+                                Write-Host 'Git 安装成功！'
+                            } else {
+                                throw 'Git 安装失败'
+                            }
+                        } else {
+                            throw '下载安装程序失败'
+                        }".to_string(),
+                    ]
+                )),
             }
         } else {
             // Unix-like systems (macOS, Linux)
@@ -212,8 +290,14 @@ pub fn install_tool(tool: &Tool) -> Result<(), String> {
                 println!("安装输出:\n{}", stdout);
             }
             
-            if !stderr.is_empty() {
-                println!("安装错误输出:\n{}", stderr);
+            // 过滤掉进度条相关的输出
+            let filtered_stderr = stderr.lines()
+                .filter(|line| !line.contains("##") && !line.contains("%"))
+                .collect::<Vec<&str>>()
+                .join("\n");
+            
+            if !filtered_stderr.is_empty() {
+                println!("安装错误输出:\n{}", filtered_stderr);
             }
             
             if !output.status.success() {
@@ -297,6 +381,8 @@ pub fn check_tools_status() -> Result<serde_json::Value, String> {
 // 安装单个工具的命令
 #[tauri::command]
 pub fn install_single_tool(tool: &str) -> Result<(), String> {
+    info!("开始安装单个工具: {}", tool);
+    
     let tool = match tool {
         "uv" => Tool::Uv,
         "bun" => Tool::Bun,
