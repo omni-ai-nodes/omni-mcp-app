@@ -9,6 +9,7 @@ use github_handler::open_github_link;
 mod model_config;
 mod save_mcp_config;
 mod sqlite_db;
+mod mcp;
 // Remove this unused import
 // use crate::db::ModelConfig;
 
@@ -27,6 +28,7 @@ fn main() {
             model_config::delete_model_config,  // Add this line
             save_mcp_config::parse_mcp_config,
             save_mcp_config::get_all_mcp_servers,
+            mcp::mcpstart, mcp::mcpmessage, mcp::mcpstop,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

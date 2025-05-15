@@ -1,5 +1,10 @@
-import { ref, onMounted, computed, nextTick } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport, StdioServerParameters } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { Tool } from "@modelcontextprotocol/sdk/types.js";
+import { homedir } from 'os';
 
 interface Message {
   id: string;
@@ -25,6 +30,9 @@ interface ModelConfig {
   endpoint?: string;
   modelOptions?: string[]; // 添加模型选项数组
 }
+interface MCPToolResult {
+  content: string;
+}
 
 // 添加或确保这些变量的声明
 export const mcpClient = ref<MCPClient | null>(null);
@@ -39,6 +47,7 @@ interface McpServer {
   type: string;
   baseUrl: string;
 }
+
 export const mcpServers = ref<McpServer[]>([]);
 export const selectedMcpServers = ref<string[]>([]);
 export const isMcpConnected = ref(false);
@@ -49,61 +58,159 @@ export const currentConversation = ref<Conversation | null>(null);
 // Define MCPClient class once at the top
 class MCPClient {
   private servers: string[] = [];
+  private sessions: Map<string, Client> = new Map();
+  private transports: Map<string, StdioClientTransport | SSEClientTransport> = new Map();
 
   async connectToServer(serverName: string) {
     try {
       // 暂时移除 Tauri 命令调用，使用模拟实现
       this.servers.push(serverName);
       console.log(`Connected to server: ${serverName}`);
+      let transport: StdioClientTransport | SSEClientTransport;
+
+      const mcpServer = mcpServers.value.find(server => server.name === serverName) as McpServer;
+        if (!mcpServer) {
+            throw new Error(`Server configuration not found for: ${serverName}`);
+        }
+
+      if (mcpServer.type === 'command' && mcpServer.command) {
+          transport = await this.createCommandTransport(mcpServer.command);
+      } else if (mcpServer.type === 'sse' && mcpServer.baseUrl) {
+          transport = await this.createSSETransport(mcpServer.baseUrl);
+      } else {
+          throw new Error(`Invalid server configuration for: ${serverName}`);
+      }
+
+      const client = new Client(
+          {
+              name: "mcp-client",
+              version: "1.0.0"
+          },
+          {
+              capabilities: {
+                  prompts: {},
+                  resources: {},
+                  tools: {}
+              }
+          }
+      );
+      await client.connect(transport);
+      
+      this.sessions.set(serverName, client);
+      this.transports.set(serverName, transport);
+      // 列出可用工具
+      const response = await client.listTools();
+      console.log(`\nConnected to server '${serverName}' with tools:`, response.tools.map((tool: Tool) => tool.name));
     } catch (error) {
       console.error(`Failed to connect to server ${serverName}:`, error);
       throw error;
     }
   }
-
-  async disconnect() {
-    try {
-      // 暂时移除 Tauri 命令调用，使用模拟实现
-      this.servers = [];
-      console.log('Disconnected from all servers');
-    } catch (error) {
-      console.error('Failed to disconnect:', error);
-      throw error;
-    }
+  private async createCommandTransport(shell: string): Promise<StdioClientTransport> {
+      const [command, ...shellArgs] = shell.split(' ');
+      if (!command) {
+          throw new Error("Invalid shell command");
+      }
+      // 处理参数中的波浪号路径
+      const args = shellArgs.map(arg => {
+          if (arg.startsWith('~/')) {
+              return arg.replace('~', homedir());
+          }
+          return arg;
+      });
+      
+      const serverParams: StdioServerParameters = {
+          command,
+          args,
+          env: Object.fromEntries(
+              Object.entries(process.env).filter(([_, v]) => v !== undefined)
+          ) as Record<string, string>
+      };
+      return new StdioClientTransport(serverParams);
   }
 
-  async processQuery(query: string, callback: (content: string) => void) {
-    try {
-      if (this.servers.length === 0) {
-        callback('错误：未连接到任何 MCP 服务器');
-        return;
-      }
+  private async createSSETransport(url: string): Promise<SSEClientTransport> {
+      return new SSEClientTransport(new URL(url));
+  }
 
-      // 遍历所有已连接的服务器
-      for (const serverName of this.servers) {
-        try {
-          // 使用 execute_command 来处理查询
-          const response = await invoke('execute_command', {
-            cmd: 'mcp',
-            args: ['query', serverName, query]
+  async callTool(toolName: string, toolArgs: any): Promise<MCPToolResult> {
+      const [serverName, actualToolName] = toolName.split('__');
+      const session = this.sessions.get(serverName);
+      
+      if (!session) {
+          throw new Error(`服务器 ${serverName} 未找到`);
+      }
+      
+      try {
+          // 执行工具调用
+          const result = await session.callTool({
+              name: actualToolName,
+              arguments: toolArgs
           });
           
-          if (typeof response === 'string') {
-            callback(response);
+          // 确保返回值符合 MCPToolResult 接口
+          if (typeof result === 'object' && result !== null) {
+              // 如果结果是对象，尝试提取或构造 content
+              const content = result.content || result.text || JSON.stringify(result);
+              return { content: content.toString() };
           } else {
-            console.error('意外的响应类型:', response);
-            callback('处理查询时出现错误：响应格式不正确');
+              // 如果结果不是对象，将其转换为字符串作为 content
+              return { content: String(result) };
           }
-        } catch (serverError) {
-          console.error(`服务器 ${serverName} 处理查询失败:`, serverError);
-          callback(`服务器 ${serverName} 处理查询失败: ${serverError.message}`);
-        }
+      } catch (error) {
+          throw new Error(`调用工具 ${serverName}:${actualToolName} 失败: ${error.message}`);
       }
-    } catch (error) {
-      console.error('处理查询失败:', error);
-      callback(`处理查询时出现错误: ${error.message}`);
-    }
   }
+
+  // 关闭所有连接
+  async disconnect(): Promise<void> {
+      for (const [serverName, transport] of this.transports) {
+          try {
+              await transport.close();
+              console.log(`Disconnected from server: ${serverName}`);
+          } catch (error) {
+              console.error(`Error disconnecting from server ${serverName}:`, error);
+          }
+      }
+      
+      this.sessions.clear();
+      this.transports.clear();
+  }
+
+  // 指定服务器的连接
+  async processQuery(query: string, sendMessageCallback: (content: string) => Promise<void>): Promise<string> {
+      if (this.sessions.size === 0) {
+          throw new Error("未连接到任何服务器");
+      }
+
+      // 获取所有服务器的工具列表
+      const availableTools: any[] = [];
+      for (const [serverName, session] of this.sessions) {
+          const response = await session.listTools();
+          const tools = response.tools.map((tool: Tool) => ({
+              type: "function" as const,
+              function: {
+                  name: `${serverName}__${tool.name}`,
+                  description: `[${serverName}] ${tool.description}`,
+                  parameters: tool.inputSchema
+              }
+          }));
+          availableTools.push(...tools);
+      }
+
+      // 使用回调函数发送消息，而不是直接调用 OpenAI API
+      await sendMessageCallback(JSON.stringify({
+          tools: availableTools,
+          query: query
+      }));
+
+      // const finalText: string[] = [];
+      
+      // 这里不再处理 OpenAI 的响应，而是由外部处理
+      // 返回工具列表信息作为参考
+      return `已连接到 ${this.sessions.size} 个 MCP 服务器，共有 ${availableTools.length} 个可用工具`;
+  }
+
 }
 
 // 在 sendMessage 函数中添加中止控制器
